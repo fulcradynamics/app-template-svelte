@@ -15,15 +15,26 @@ A SvelteKit web application template for building on the Fulcra platform. This t
 npm install
 ```
 
-2. Run the development server:
+2. Configure environment variables:
+```bash
+cp .env.example .env
+```
+Then edit `.env` with your Auth0 credentials and Fulcra API endpoint.
+
+3. Run the development server:
 ```bash
 npm run dev
 ```
+The app will be available at http://localhost:6173/
 
-3. Build for production:
+4. Build for production:
 ```bash
 npm run build
 ```
+
+## Authentication
+
+This template includes Auth0 authentication out of the box. Users can sign in and access their Fulcra user ID. The authentication state is persisted to localStorage.
 
 ## Project Structure
 

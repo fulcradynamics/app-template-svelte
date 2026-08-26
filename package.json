@@ -39,6 +39,7 @@
     "vitest": "^4.0.15"
   },
   "dependencies": {
+    "@auth0/auth0-spa-js": "^2.19.2",
     "daisyui": "^5.5.14"
   }
 }
