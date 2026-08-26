@@ -1,4 +1,4 @@
-import { env } from '$env/dynamic/private';
+import { env } from '$env/dynamic/public';
 import { error, json } from '@sveltejs/kit';
 
 /**
@@ -13,9 +13,9 @@ export async function GET({ cookies }) {
   }
 
   try {
-    const apiUrl = `${env.FULCRA_API_ENDPOINT}/user/v1alpha1/info`;
+    const apiUrl = `${env.PUBLIC_FULCRA_API_ENDPOINT}user/v1alpha1/info`;
     console.log('Fetching user info from:', apiUrl);
-    console.log('FULCRA_API_ENDPOINT env var:', env.FULCRA_API_ENDPOINT);
+    console.log('PUBLIC_FULCRA_API_ENDPOINT env var:', env.PUBLIC_FULCRA_API_ENDPOINT);
 
     // Try to get user info
     let response = await fetch(apiUrl, {
@@ -28,7 +28,7 @@ export async function GET({ cookies }) {
     // If user doesn't exist (404), register them first
     if (response.status === 404) {
       console.log('User not found, registering new user...');
-      const registerResponse = await fetch(`${env.FULCRA_API_ENDPOINT}/user/v0/register`, {
+      const registerResponse = await fetch(`${env.PUBLIC_FULCRA_API_ENDPOINT}user/v0/register`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -45,7 +45,7 @@ export async function GET({ cookies }) {
       console.log('User registered successfully, fetching user info...');
 
       // Now fetch user info again
-      response = await fetch(`${env.FULCRA_API_ENDPOINT}/user/v1alpha1/info`, {
+      response = await fetch(`${env.PUBLIC_FULCRA_API_ENDPOINT}user/v1alpha1/info`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
