@@ -12,9 +12,14 @@ export async function POST({ request, cookies }) {
   }
 
   // Store token in HTTP-only cookie (more secure than localStorage)
+  // Security settings ensure cookie is only accessible from this domain:
+  // - httpOnly: JavaScript cannot access the cookie (XSS protection)
+  // - secure: Only sent over HTTPS (localhost is exempt in dev)
+  // - sameSite: 'strict': Cookie only sent to same domain, not cross-site
+  // - path: '/': Available to all routes on this domain only
   cookies.set('fulcra_access_token', accessToken, {
     httpOnly: true,
-    secure: true, // Only send over HTTPS (except localhost)
+    secure: true,
     sameSite: 'strict',
     maxAge: 60 * 60 * 24, // 24 hours
     path: '/'
