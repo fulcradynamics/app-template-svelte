@@ -1,7 +1,6 @@
 import { env } from '$env/dynamic/public';
 import { writable, get } from 'svelte/store';
 import { createAuth0Client } from '@auth0/auth0-spa-js';
-import { fulcraApiClient } from '$lib/apiclient.js';
 import { browser } from '$app/environment';
 
 /**
@@ -80,11 +79,8 @@ export const user = (() => {
   // create our underlying persisted writable store
   const { subscribe, set, update } = persistedObjectWritable('fulcraUserState', userState);
 
-  // private clients for auth0 & fulcra api, init() will initialize these
+  // private client for auth0, init() will initialize this
   let auth0 = {};
-
-  /** @type {import('$lib/apiclient.js').fulcraApiClient} */
-  let apiClient = {};
 
   /**
    * Initializes a user session, this should be called at top level onMount
@@ -101,19 +97,13 @@ export const user = (() => {
     });
 
     // check for existing auth0 session, if we don't have one, clear our persisted userinfo
-    if (!(await auth0.isAuthenticated())) _clearUser();
-
-    // So one thing we could do here is just run _getInfo() if auth0.isAuthenticated is true,
-    // this would result in some extra REST calls on page reload BUT we also wouldn't have to
-    // persist user objects.
-
-    // init fulcra api client
-    apiClient = new fulcraApiClient(env.PUBLIC_FULCRA_API_ENDPOINT, auth0);
+    if (!(await auth0.isAuthenticated())) {
+      _clearUser();
+    }
 
     // set init to true
     update((d) => {
       d.init = true;
-      d.apiClient = apiClient;
       return d;
     });
   };
@@ -128,18 +118,35 @@ export const user = (() => {
       return;
     }
 
+    // Store access token in HTTP-only cookie via server route
+    const accessToken = await auth0.getTokenSilently();
+    await fetch('/api/auth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessToken })
+    });
+
     await _getUser();
   };
 
   const _logout = async () => {
+    // Clear the access token cookie
+    await fetch('/api/auth/token', { method: 'DELETE' });
     await auth0.logout();
     _clearUser();
   };
 
-  // grab user info from auth0 & fulcra api
+  // grab user info from auth0 & fulcra api via server routes
   const _getUser = async () => {
     const userInfo = await auth0.getUser();
-    const fulcraUserInfo = await apiClient.get('user/v1alpha1/info');
+
+    // Call server route instead of Fulcra API directly
+    const response = await fetch('/api/user/info');
+    if (!response.ok) {
+      throw new Error('Failed to fetch user info');
+    }
+    const fulcraUserInfo = await response.json();
+
     update((d) => {
       d.auth0UserInfo = userInfo;
       d.fulcraUserInfo = fulcraUserInfo;
