@@ -109,9 +109,9 @@ export const user = (() => {
   };
 
   // allow a user to attempt to log in
-  const _login = async () => {
+  const _login = async (options = {}) => {
     try {
-      await auth0.loginWithPopup();
+      await auth0.loginWithPopup(options);
     } catch (error) {
       // TODO handle these errors properly
       console.error(error);
@@ -128,6 +128,10 @@ export const user = (() => {
 
     await _getUser();
   };
+
+  // open the Auth0 popup on its signup screen
+  const _signup = async () =>
+    _login({ authorizationParams: { screen_hint: 'signup' } });
 
   const _logout = async () => {
     // Clear the access token cookie
@@ -170,6 +174,7 @@ export const user = (() => {
     update,
     init: _init,
     login: _login,
+    signup: _signup,
     logout: _logout
   };
 })();
