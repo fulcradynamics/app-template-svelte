@@ -1,7 +1,7 @@
 <script>
   import { user } from '$lib/user';
   import { onMount } from 'svelte';
-  import Login from '$lib/components/Login.svelte';
+  import LoginDeviceFlow from '$lib/components/LoginDeviceFlow.svelte';
 
   let preferences = $state(null);
   let loadingPreferences = $state(false);
@@ -32,7 +32,7 @@
 </svelte:head>
 
 {#if !$user.authenticated}
-  <Login />
+  <LoginDeviceFlow />
 {:else}
   <div class="flex h-full min-h-screen items-center justify-center">
     <div class="text-center">

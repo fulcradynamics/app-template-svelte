@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/public';
 import { writable, get } from 'svelte/store';
-import { createAuth0Client } from '@auth0/auth0-spa-js';
+import { Auth0DeviceFlow } from '$lib/auth0-device-flow.js';
 import { browser } from '$app/environment';
 
 /**
@@ -87,13 +87,11 @@ export const user = (() => {
    * to set up auth0, etc
    */
   const _init = async () => {
-    // create our auth0 Client
-    auth0 = await createAuth0Client({
+    // create our auth0 device flow client
+    auth0 = new Auth0DeviceFlow({
       domain: env.PUBLIC_AUTH0_DOMAIN,
       clientId: env.PUBLIC_AUTH0_CLIENT_ID,
-      authorizationParams: {
-        audience: env.PUBLIC_FULCRA_API_ENDPOINT
-      }
+      audience: env.PUBLIC_FULCRA_API_ENDPOINT
     });
 
     // check for existing auth0 session, if we don't have one, clear our persisted userinfo
@@ -108,30 +106,36 @@ export const user = (() => {
     });
   };
 
-  // allow a user to attempt to log in
-  const _login = async (options = {}) => {
+  // Start device flow and return verification info for UI to display
+  const _startLogin = async () => {
     try {
-      await auth0.loginWithPopup(options);
+      const verificationInfo = await auth0.startDeviceFlow();
+      return verificationInfo;
     } catch (error) {
-      // TODO handle these errors properly
-      console.error(error);
-      return;
+      console.error('Failed to start device flow:', error);
+      throw error;
     }
-
-    // Store access token in HTTP-only cookie via server route
-    const accessToken = await auth0.getTokenSilently();
-    await fetch('/api/auth/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ accessToken })
-    });
-
-    await _getUser();
   };
 
-  // open the Auth0 popup on its signup screen
-  const _signup = async () =>
-    _login({ authorizationParams: { screen_hint: 'signup' } });
+  // Poll for token after user has seen verification URL
+  const _completeLogin = async (deviceCode, interval) => {
+    try {
+      await auth0.pollForToken(deviceCode, interval);
+
+      // Store access token in HTTP-only cookie via server route
+      const accessToken = await auth0.getTokenSilently();
+      await fetch('/api/auth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken })
+      });
+
+      await _getUser();
+    } catch (error) {
+      console.error('Failed to complete login:', error);
+      throw error;
+    }
+  };
 
   const _logout = async () => {
     // Clear the access token cookie
@@ -173,8 +177,8 @@ export const user = (() => {
     set,
     update,
     init: _init,
-    login: _login,
-    signup: _signup,
+    startLogin: _startLogin,
+    completeLogin: _completeLogin,
     logout: _logout
   };
 })();
