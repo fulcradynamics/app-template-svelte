@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/public';
 import { error, json } from '@sveltejs/kit';
-import { FulcraApiClient } from '$lib/apiclient.js';
+import { FulcraApiClient } from '$lib/api-client.js';
 
 /**
  * Server-side endpoint to fetch user preferences from Fulcra API
