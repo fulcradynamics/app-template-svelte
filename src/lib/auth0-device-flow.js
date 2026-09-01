@@ -24,15 +24,11 @@ export class Auth0DeviceFlow {
    * Start the device authorization flow
    * Returns verification URL and user code for the user to complete auth
    * Uses server route to bypass CORS
-   *
-   * @param {Object} options - Optional parameters
-   * @param {string} options.prompt - Auth0 prompt parameter ('login' to force re-auth, 'select_account' for account selector)
    */
-  async startDeviceFlow(options = {}) {
+  async startDeviceFlow() {
     const response = await fetch('/api/auth/device/code', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(options)
+      headers: { 'Content-Type': 'application/json' }
     });
 
     if (!response.ok) {
@@ -40,6 +36,7 @@ export class Auth0DeviceFlow {
     }
 
     const data = await response.json();
+
     return {
       deviceCode: data.device_code,
       userCode: data.user_code,

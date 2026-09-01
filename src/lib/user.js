@@ -94,8 +94,20 @@ export const user = (() => {
       audience: env.PUBLIC_FULCRA_API_ENDPOINT
     });
 
-    // check for existing auth0 session, if we don't have one, clear our persisted userinfo
-    if (!(await auth0.isAuthenticated())) {
+    // Check if we have a valid access token cookie (server-side check)
+    try {
+      const response = await fetch('/api/auth/check');
+      const { authenticated } = await response.json();
+
+      if (authenticated) {
+        // We have a valid cookie, restore the user session
+        await _getUser();
+      } else {
+        // No valid session, clear persisted user info
+        _clearUser();
+      }
+    } catch (error) {
+      console.error('Failed to check auth status:', error);
       _clearUser();
     }
 
@@ -109,12 +121,27 @@ export const user = (() => {
   // Start device flow and return verification info for UI to display
   const _startLogin = async (options = {}) => {
     try {
-      // Always prompt for login to ensure user sees which account they're using
-      // This prevents automatically using the last Auth0 SSO session
-      const verificationInfo = await auth0.startDeviceFlow({
-        prompt: 'login',
-        ...options
-      });
+      // FIRST: Clear any existing Auth0 SSO session
+      // This forces the user to actively authenticate (no silent SSO reuse)
+      if (browser) {
+        await new Promise((resolve) => {
+          const logoutUrl = `https://${env.PUBLIC_AUTH0_DOMAIN}/v2/logout`;
+          // Open in a hidden iframe to avoid popup blockers
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = logoutUrl;
+          document.body.appendChild(iframe);
+
+          // Give it a moment to complete, then remove the iframe
+          setTimeout(() => {
+            document.body.removeChild(iframe);
+            resolve();
+          }, 1000);
+        });
+      }
+
+      // NOW start the device flow - user will need to actively authenticate
+      const verificationInfo = await auth0.startDeviceFlow();
       return verificationInfo;
     } catch (error) {
       console.error('Failed to start device flow:', error);
@@ -170,31 +197,36 @@ export const user = (() => {
     // Finally, end the Auth0 SSO session itself. Without it the next sign-in
     // could silently reuse the still-active session. This must run in a browser
     // context (the SSO cookie is first-party to the Auth0 domain and can't be
-    // cleared server-side). We deliberately omit `returnTo` so Auth0 does NOT
-    // require the URL to be in the app's "Allowed Logout URLs" — the tradeoff
-    // is that the popup briefly shows Auth0's default page, so we just close it
-    // on a short timer once the request has had a moment to clear the session.
+    // cleared server-side). We use a hidden iframe (no popup, no visible UI).
     if (browser) {
       const logoutUrl = `https://${env.PUBLIC_AUTH0_DOMAIN}/v2/logout`;
-      const popup = window.open(logoutUrl, 'auth0-logout', 'width=500,height=600,left=100,top=100');
-      if (popup) {
-        setTimeout(() => {
-          if (!popup.closed) popup.close();
-        }, 2000);
-      }
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = logoutUrl;
+      document.body.appendChild(iframe);
+
+      // Give it a moment to complete, then remove the iframe
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 1000);
     }
   };
 
   // grab user info from auth0 & fulcra api via server routes
   const _getUser = async () => {
-    const userInfo = await auth0.getUser();
-
-    // Call server route instead of Fulcra API directly
-    const response = await fetch('/api/user/info');
-    if (!response.ok) {
-      throw new Error('Failed to fetch user info');
+    // Get Auth0 user info from server (uses HTTP-only cookie)
+    const auth0Response = await fetch('/api/auth/user');
+    if (!auth0Response.ok) {
+      throw new Error('Failed to fetch Auth0 user info');
     }
-    const fulcraUserInfo = await response.json();
+    const userInfo = await auth0Response.json();
+
+    // Get Fulcra user info from server (uses HTTP-only cookie)
+    const fulcraResponse = await fetch('/api/user/info');
+    if (!fulcraResponse.ok) {
+      throw new Error('Failed to fetch Fulcra user info');
+    }
+    const fulcraUserInfo = await fulcraResponse.json();
 
     update((d) => {
       d.auth0UserInfo = userInfo;
