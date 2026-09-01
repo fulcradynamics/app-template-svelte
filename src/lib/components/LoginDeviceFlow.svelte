@@ -11,9 +11,21 @@
       error = null;
       verificationInfo = await user.startLogin();
 
+      // Open verification URL in popup
+      const popup = window.open(
+        verificationInfo.verificationUri,
+        'auth0-device-flow',
+        'width=500,height=700,left=100,top=100'
+      );
+
       // Start polling for token
       polling = true;
       await user.completeLogin(verificationInfo.deviceCode, verificationInfo.interval);
+
+      // Close popup if still open
+      if (popup && !popup.closed) {
+        popup.close();
+      }
 
       // If we get here, login succeeded
       polling = false;
@@ -50,22 +62,26 @@
     {:else}
       <div class="flex flex-col space-y-4">
         <div class="rounded-lg bg-fulcra-black-50 p-4">
-          <p class="text-sm text-fulcra-gray mb-2">1. Visit this URL on any device:</p>
-          <a
-            href={verificationInfo.verificationUri}
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-fulcra-teal hover:underline break-all text-sm"
-          >
-            {verificationInfo.verificationUri}
-          </a>
-
-          <p class="text-sm text-fulcra-gray mt-4 mb-2">2. Enter this code:</p>
+          <p class="text-sm text-fulcra-gray mb-2">
+            A popup window has opened. Enter this code:
+          </p>
           <div class="bg-fulcra-black-25 rounded px-3 py-2 text-center">
             <span class="text-2xl font-mono text-fulcra-white tracking-widest">
               {verificationInfo.userCode}
             </span>
           </div>
+
+          <p class="text-xs text-fulcra-gray mt-4 text-center">
+            Popup blocked?
+            <a
+              href={verificationInfo.verificationUri}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-fulcra-teal hover:underline"
+            >
+              Click here
+            </a>
+          </p>
         </div>
 
         {#if polling}
