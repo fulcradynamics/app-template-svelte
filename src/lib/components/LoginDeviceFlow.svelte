@@ -9,6 +9,42 @@
   const description =
     'A starter template you can clone and build on. Sign-in and user accounts work from the first commit — replace this copy with your own and start shipping.';
   const showSlots = true; // set false once you've replaced the placeholders
+
+  let verificationInfo = $state(null);
+  let polling = $state(false);
+  let error = $state(null);
+
+  async function startLogin() {
+    try {
+      error = null;
+      verificationInfo = await user.startLogin();
+
+      // Open verification URL in popup
+      const popup = window.open(
+        verificationInfo.verificationUri,
+        'auth0-device-flow',
+        'width=500,height=700,left=100,top=100'
+      );
+
+      // Start polling for token
+      polling = true;
+      await user.completeLogin(verificationInfo.deviceCode, verificationInfo.interval);
+
+      // Close popup if still open
+      if (popup && !popup.closed) {
+        popup.close();
+      }
+
+      // If we get here, login succeeded
+      polling = false;
+      verificationInfo = null;
+    } catch (err) {
+      console.error('Login error:', err);
+      error = err.message;
+      polling = false;
+      verificationInfo = null;
+    }
+  }
 </script>
 
 <!-- -m-3 cancels the global p-3 gutter from +layout.svelte so the screen is full-bleed -->
@@ -70,33 +106,63 @@
       <div class="rounded-lg border border-solid border-fulcra-black-25 bg-[#1b1b23] p-[22px]">
         <h2 class="mb-4 text-[15px] font-medium tracking-[-0.01em]">Get started</h2>
 
-        <div class="flex flex-col gap-2.5">
-          <button
-            class="btn h-12 w-full rounded-lg bg-fulcra-teal/20 text-[14.5px] font-medium text-fulcra-teal transition-colors hover:bg-fulcra-teal/50 hover:text-fulcra-black"
-            on:click={() => user.login()}>Sign In</button
-          >
-          <button
-            class="btn h-12 w-full rounded-lg border border-solid border-fulcra-black-25 bg-transparent text-[14.5px] font-normal text-fulcra-white transition-colors hover:border-fulcra-black-20 hover:bg-fulcra-black-50"
-            on:click={() => user.signup()}>Create Account</button
-          >
-        </div>
+        {#if !verificationInfo}
+          <div class="flex flex-col gap-2.5">
+            <button
+              class="btn h-12 w-full rounded-lg bg-fulcra-teal/20 text-[14.5px] font-medium text-fulcra-teal transition-colors hover:bg-fulcra-teal/50 hover:text-fulcra-black"
+              on:click={startLogin}>Sign In</button
+            >
+            <button
+              class="btn h-12 w-full rounded-lg border border-solid border-fulcra-black-25 bg-transparent text-[14.5px] font-normal text-fulcra-white transition-colors hover:border-fulcra-black-20 hover:bg-fulcra-black-50"
+              on:click={startLogin}>Create Account</button
+            >
+          </div>
 
-        <p class="mt-4 text-[12px] leading-[1.6] text-fulcra-gray text-pretty">
-          Both open a secure Auth0 window. By continuing you agree to the
-          <a
-            href="https://fulcra.ai/legal/terms-conditions"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-fulcra-gray underline hover:text-fulcra-white">Terms</a
-          >
-          and
-          <a
-            href="https://fulcra.ai/legal/privacy-policy"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-fulcra-gray underline hover:text-fulcra-white">Privacy Policy</a
-          >.
-        </p>
+          {#if error}
+            <p class="mt-3 text-[13px] text-fulcra-error">{error}</p>
+          {/if}
+
+          <p class="mt-4 text-[12px] leading-[1.6] text-fulcra-gray text-pretty">
+            Opens a secure Auth0 window. By continuing you agree to the
+            <a
+              href="https://fulcra.ai/legal/terms-conditions"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-fulcra-gray underline hover:text-fulcra-white">Terms</a
+            >
+            and
+            <a
+              href="https://fulcra.ai/legal/privacy-policy"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-fulcra-gray underline hover:text-fulcra-white">Privacy Policy</a
+            >.
+          </p>
+        {:else}
+          <p class="text-[13px] leading-[1.6] text-fulcra-gray">
+            A popup window has opened. Enter this code to continue:
+          </p>
+          <div class="mt-3 rounded-lg border border-solid border-fulcra-black-25 bg-fulcra-black-50 px-3 py-3 text-center">
+            <span class="font-mono text-2xl tracking-widest text-fulcra-white">{verificationInfo.userCode}</span>
+          </div>
+
+          {#if polling}
+            <div class="mt-4 flex items-center justify-center gap-2 text-fulcra-gray">
+              <div class="loading loading-spinner loading-sm"></div>
+              <span class="text-[13px]">Waiting for authentication…</span>
+            </div>
+          {/if}
+
+          <p class="mt-4 text-[12px] leading-[1.6] text-fulcra-gray">
+            Popup blocked?
+            <a
+              href={verificationInfo.verificationUri}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-fulcra-teal underline hover:text-fulcra-white">Open the verification page</a
+            >.
+          </p>
+        {/if}
       </div>
 
       <div class="mt-5 flex items-center gap-2.5 pl-0.5">
