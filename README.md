@@ -34,7 +34,22 @@ npm run build
 
 ## Authentication
 
-This template includes Auth0 authentication out of the box. Users can sign in and access their Fulcra user ID. The authentication state is persisted to localStorage.
+This template includes Auth0 authentication out of the box with server-side API proxying:
+
+- **Auth0 Login**: Handled client-side with Auth0 SDK
+- **Access Tokens**: Stored in HTTP-only cookies (more secure than localStorage)
+- **API Calls**: Proxied through SvelteKit server routes to bypass CORS
+- **No CORS Issues**: Works with any deployment platform (Vercel, Netlify, Cloudflare Pages)
+
+### How It Works
+
+1. User authenticates with Auth0 (client-side)
+2. Access token is sent to server and stored in HTTP-only cookie
+3. Client makes requests to `/api/*` server routes
+4. Server routes use the cookie token to call Fulcra API
+5. No CORS restrictions since requests are server-to-server
+
+This approach is more secure and doesn't require adding your domain to the Fulcra API CORS allowlist.
 
 ## Project Structure
 
