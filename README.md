@@ -101,6 +101,16 @@ This template includes Auth0 authentication out of the box, using the **Auth0 De
 
 The auth logic lives in `src/lib/user.js` and `src/lib/auth0-device-flow.js`. This approach is more secure and doesn't require adding your domain to the Fulcra API CORS allowlist.
 
+## Fulcra API Client
+
+The template includes a `FulcraAPI` class (`src/lib/api-client.js`) for organized access to the Fulcra REST API:
+
+- **High-level methods** for common operations: `getUserInfo()`, `getUserPreferences()`, etc.
+- **Low-level HTTP methods** for flexibility: `get()`, `post()`, `put()`, `delete()`
+- **Designed for extension** — add new methods following the existing pattern
+
+See the [Fulcra REST API documentation](https://docs.fulcradynamics.com/rest-api/) for available endpoints. When you need to call a new endpoint, add a method to `FulcraAPI` and use it from your server routes.
+
 ## Project Structure
 
 ```
@@ -110,7 +120,7 @@ src/
 ├── lib/
 │   ├── auth0-device-flow.js        # Auth0 device authorization flow client
 │   ├── user.js                     # User/auth store (login, logout, session)
-│   ├── apiclient.js                # Helper for calling the Fulcra API
+│   ├── api-client.js               # FulcraAPI class for calling the Fulcra API
 │   └── components/
 │       └── LoginDeviceFlow.svelte  # Login screen
 └── routes/
