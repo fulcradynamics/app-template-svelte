@@ -23,16 +23,11 @@ export class Auth0DeviceFlow {
   /**
    * Start the device authorization flow
    * Returns verification URL and user code for the user to complete auth
+   * Uses server route to bypass CORS
    */
   async startDeviceFlow() {
-    const response = await fetch(`https://${this.domain}/oauth/device/code`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        client_id: this.clientId,
-        audience: this.audience,
-        scope: 'openid profile email offline_access'
-      })
+    const response = await fetch('/api/auth/device/code', {
+      method: 'POST'
     });
 
     if (!response.ok) {
@@ -51,6 +46,7 @@ export class Auth0DeviceFlow {
 
   /**
    * Poll for token after user has been shown the verification URL
+   * Uses server route to bypass CORS
    */
   async pollForToken(deviceCode, interval = 5) {
     const maxAttempts = 60; // 5 minutes with 5 second intervals
@@ -62,22 +58,25 @@ export class Auth0DeviceFlow {
       // Wait for the interval before polling
       await new Promise(resolve => setTimeout(resolve, interval * 1000));
 
-      const response = await fetch(`https://${this.domain}/oauth/token`, {
+      const response = await fetch('/api/auth/device/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
-          device_code: deviceCode,
-          client_id: this.clientId
-        })
+        body: JSON.stringify({ deviceCode })
       });
 
-      if (response.ok) {
-        this.tokenData = await response.json();
+      if (!response.ok) {
+        throw new Error('Failed to poll for token');
+      }
+
+      const result = await response.json();
+
+      // Check if token request was successful
+      if (result.status === 200) {
+        this.tokenData = result.data;
         return this.tokenData;
       }
 
-      const error = await response.json();
+      const error = result.data;
 
       // authorization_pending means user hasn't completed auth yet, keep polling
       if (error.error === 'authorization_pending') {
