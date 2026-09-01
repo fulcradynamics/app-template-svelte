@@ -1,42 +1,50 @@
 /**
- * Represents an authenticated HTTP client to the Fulcra Life API
+ * Authenticated HTTP client for the Fulcra API
+ *
+ * This class provides low-level HTTP methods (get, post, put, delete) and
+ * high-level domain methods for specific API endpoints. When adding new
+ * functionality, add methods here following the existing pattern.
  */
-export class fulcraApiClient {
-  constructor(endpoint, client) {
-    this.endpoint = endpoint;
-    this.client = client;
+export class FulcraApiClient {
+  constructor(apiEndpoint, accessToken) {
+    this.apiEndpoint = apiEndpoint;
+    this.accessToken = accessToken;
   }
 
+  /**
+   * Low-level HTTP request method
+   * @private
+   */
   async request(method, path, data, signal) {
-    const url = new URL(this.endpoint + path);
+    const url = `${this.apiEndpoint}${path}`;
 
-    let options = {
-      signal: signal,
-      method: method,
+    const options = {
+      signal,
+      method,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + (await this.client.getTokenSilently())
+        Authorization: `Bearer ${this.accessToken}`
       }
     };
 
-    if (data != undefined) {
+    if (data !== undefined) {
       options.body = JSON.stringify(data);
     }
 
-    const resp = await fetch(url, options);
+    const response = await fetch(url, options);
 
-    // check for non-2xx status
-    if (!resp.ok) {
-      throw new Error(`Response status ${resp.status}`, { cause: resp });
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
     }
 
-    if (resp.status === 204) {
+    if (response.status === 204) {
       return;
-    } else {
-      return await resp.json();
     }
+
+    return await response.json();
   }
 
+  // Low-level HTTP methods
   async get(path, signal) {
     return this.request('GET', path, undefined, signal);
   }
@@ -51,5 +59,38 @@ export class fulcraApiClient {
 
   async delete(path) {
     return this.request('DELETE', path);
+  }
+
+  // ============================================================
+  // High-level API methods
+  // Add new Fulcra API methods here following this pattern:
+  // - Clear method names that describe what they fetch/do
+  // - JSDoc comments for parameters and return types
+  // - Use the low-level HTTP methods above
+  // ============================================================
+
+  /**
+   * Get current user's info
+   * @returns {Promise<Object>} User info including userid, email, preferences, etc.
+   */
+  async getUserInfo() {
+    return this.get('user/v1alpha1/info');
+  }
+
+  /**
+   * Get current user's preferences
+   * @returns {Promise<Object>} User preferences including timezone, selected metrics, etc.
+   */
+  async getUserPreferences() {
+    return this.get('user/v1alpha1/preferences');
+  }
+
+  /**
+   * Update current user's preferences
+   * @param {Object} preferences - Partial preferences object to update
+   * @returns {Promise<Object>} Updated preferences
+   */
+  async updateUserPreferences(preferences) {
+    return this.post('user/v1alpha1/preferences', preferences);
   }
 }
