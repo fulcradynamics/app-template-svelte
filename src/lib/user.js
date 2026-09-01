@@ -107,9 +107,14 @@ export const user = (() => {
   };
 
   // Start device flow and return verification info for UI to display
-  const _startLogin = async () => {
+  const _startLogin = async (options = {}) => {
     try {
-      const verificationInfo = await auth0.startDeviceFlow();
+      // Always prompt for login to ensure user sees which account they're using
+      // This prevents automatically using the last Auth0 SSO session
+      const verificationInfo = await auth0.startDeviceFlow({
+        prompt: 'login',
+        ...options
+      });
       return verificationInfo;
     } catch (error) {
       console.error('Failed to start device flow:', error);
