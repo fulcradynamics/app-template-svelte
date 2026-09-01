@@ -1,10 +1,10 @@
 import { env } from '$env/dynamic/public';
 import { error, json } from '@sveltejs/kit';
-import { FulcraApiClient } from '$lib/api-client.js';
+import { FulcraAPI } from '$lib/api-client.js';
 
 /**
  * Server-side endpoint to fetch user preferences from Fulcra API
- * Demonstrates using FulcraApiClient's high-level methods
+ * Demonstrates using FulcraAPI's high-level methods
  */
 export async function GET({ cookies }) {
   const accessToken = cookies.get('fulcra_access_token');
@@ -14,7 +14,7 @@ export async function GET({ cookies }) {
   }
 
   try {
-    const apiClient = new FulcraApiClient(env.PUBLIC_FULCRA_API_ENDPOINT, accessToken);
+    const apiClient = new FulcraAPI(env.PUBLIC_FULCRA_API_ENDPOINT, accessToken);
     const preferences = await apiClient.getUserPreferences();
     return json(preferences);
   } catch (err) {

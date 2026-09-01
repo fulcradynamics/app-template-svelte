@@ -4,8 +4,10 @@
  * This class provides low-level HTTP methods (get, post, put, delete) and
  * high-level domain methods for specific API endpoints. When adding new
  * functionality, add methods here following the existing pattern.
+ *
+ * Fulcra REST API documentation: https://docs.fulcradynamics.com/rest-api/
  */
-export class FulcraApiClient {
+export class FulcraAPI {
   constructor(apiEndpoint, accessToken) {
     this.apiEndpoint = apiEndpoint;
     this.accessToken = accessToken;
