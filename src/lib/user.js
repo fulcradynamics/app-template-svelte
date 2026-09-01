@@ -138,10 +138,46 @@ export const user = (() => {
   };
 
   const _logout = async () => {
-    // Clear the access token cookie
+    // Grab the refresh token before we clear local state so we can revoke it
+    const refreshToken = auth0.getRefreshToken?.();
+
+    // Revoke the refresh token at Auth0 so it can no longer mint access tokens.
+    // Best-effort: never block logout on this (proxied server-side to avoid CORS).
+    if (refreshToken) {
+      try {
+        await fetch('/api/auth/revoke', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken })
+        });
+      } catch (error) {
+        console.error('Failed to revoke refresh token:', error);
+      }
+    }
+
+    // Clear the app's access token cookie
     await fetch('/api/auth/token', { method: 'DELETE' });
+
+    // Clear the local client + persisted user state
     await auth0.logout();
     _clearUser();
+
+    // Finally, end the Auth0 SSO session itself. Without it the next sign-in
+    // could silently reuse the still-active session. This must run in a browser
+    // context (the SSO cookie is first-party to the Auth0 domain and can't be
+    // cleared server-side). We deliberately omit `returnTo` so Auth0 does NOT
+    // require the URL to be in the app's "Allowed Logout URLs" — the tradeoff
+    // is that the popup briefly shows Auth0's default page, so we just close it
+    // on a short timer once the request has had a moment to clear the session.
+    if (browser) {
+      const logoutUrl = `https://${env.PUBLIC_AUTH0_DOMAIN}/v2/logout`;
+      const popup = window.open(logoutUrl, 'auth0-logout', 'width=500,height=600,left=100,top=100');
+      if (popup) {
+        setTimeout(() => {
+          if (!popup.closed) popup.close();
+        }, 2000);
+      }
+    }
   };
 
   // grab user info from auth0 & fulcra api via server routes

@@ -107,6 +107,14 @@ export class Auth0DeviceFlow {
   }
 
   /**
+   * Get the refresh token, if one was issued (requires the offline_access scope).
+   * Returns null when unavailable.
+   */
+  getRefreshToken() {
+    return this.tokenData?.refresh_token ?? null;
+  }
+
+  /**
    * Get user info from Auth0
    */
   async getUser() {
