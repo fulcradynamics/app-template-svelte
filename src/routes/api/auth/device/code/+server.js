@@ -5,16 +5,18 @@ import { error, json } from '@sveltejs/kit';
  * Server-side proxy for Auth0 device authorization endpoint
  * Bypasses CORS by making the request server-side
  */
-export async function POST() {
+export async function POST({ request }) {
   try {
+    const deviceCodeRequest = {
+      client_id: env.PUBLIC_AUTH0_CLIENT_ID,
+      audience: env.PUBLIC_FULCRA_API_ENDPOINT,
+      scope: 'openid profile email offline_access'
+    };
+
     const response = await fetch(`https://${env.PUBLIC_AUTH0_DOMAIN}/oauth/device/code`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        client_id: env.PUBLIC_AUTH0_CLIENT_ID,
-        audience: env.PUBLIC_FULCRA_API_ENDPOINT,
-        scope: 'openid profile email offline_access'
-      })
+      body: JSON.stringify(deviceCodeRequest)
     });
 
     if (!response.ok) {
