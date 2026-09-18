@@ -17,18 +17,14 @@
   async function startLogin() {
     // Open the popup synchronously within the click gesture. Safari only permits
     // window.open() in the same call stack as the user gesture; opening it after
-    // an await (as we do below) gets blocked. We open a blank window now and
-    // navigate it to the verification URL once startLogin() resolves.
+    // an await gets blocked. We hand the window to user.startLogin(), which
+    // navigates it (first to Auth0 logout to clear the SSO session, then to the
+    // device-flow verification URL).
     const popup = window.open('about:blank', 'auth0-device-flow', 'width=500,height=700,left=100,top=100');
 
     try {
       error = null;
-      verificationInfo = await user.startLogin();
-
-      // Point the already-open popup at the verification URL
-      if (popup && !popup.closed) {
-        popup.location.href = verificationInfo.verificationUri;
-      }
+      verificationInfo = await user.startLogin(popup);
 
       // Start polling for token
       polling = true;

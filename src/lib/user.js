@@ -118,30 +118,41 @@ export const user = (() => {
     });
   };
 
-  // Start device flow and return verification info for UI to display
-  const _startLogin = async (options = {}) => {
+  // Start device flow and return verification info for UI to display.
+  //
+  // `popup` is a window the caller opened synchronously within the click gesture
+  // (required so Safari doesn't block it). We drive it through two navigations:
+  // first to Auth0's logout endpoint to clear any existing SSO session, then to
+  // the device-flow verification URL. Because the popup is a top-level,
+  // first-party context for the Auth0 domain, the SSO cookie is actually cleared
+  // — a hidden iframe would be treated as third-party and blocked by Safari's
+  // ITP. This is what forces the user to actively pick an account.
+  const _startLogin = async (popup) => {
     try {
-      // FIRST: Clear any existing Auth0 SSO session
-      // This forces the user to actively authenticate (no silent SSO reuse)
-      if (browser) {
-        await new Promise((resolve) => {
-          const logoutUrl = `https://${env.PUBLIC_AUTH0_DOMAIN}/v2/logout`;
-          // Open in a hidden iframe to avoid popup blockers
-          const iframe = document.createElement('iframe');
-          iframe.style.display = 'none';
-          iframe.src = logoutUrl;
-          document.body.appendChild(iframe);
-
-          // Give it a moment to complete, then remove the iframe
-          setTimeout(() => {
-            document.body.removeChild(iframe);
-            resolve();
-          }, 1000);
-        });
+      // Kick off SSO logout in the popup. We can set location on a window we
+      // opened even cross-origin (we just can't read it back).
+      const logoutStartedAt = Date.now();
+      if (popup && !popup.closed) {
+        popup.location.href = `https://${env.PUBLIC_AUTH0_DOMAIN}/v2/logout`;
       }
 
-      // NOW start the device flow - user will need to actively authenticate
+      // Fetch the device code; this network round-trip overlaps with the logout.
       const verificationInfo = await auth0.startDeviceFlow();
+
+      // Give the logout time to complete before sending the popup on to the
+      // verification page. We can't read the cross-origin popup's state, so we
+      // wait for a minimum dwell, minus whatever the fetch above already used.
+      if (popup && !popup.closed) {
+        const SSO_LOGOUT_DWELL_MS = 1200;
+        const remaining = SSO_LOGOUT_DWELL_MS - (Date.now() - logoutStartedAt);
+        if (remaining > 0) {
+          await new Promise((resolve) => setTimeout(resolve, remaining));
+        }
+        if (!popup.closed) {
+          popup.location.href = verificationInfo.verificationUri;
+        }
+      }
+
       return verificationInfo;
     } catch (error) {
       console.error('Failed to start device flow:', error);
@@ -170,6 +181,22 @@ export const user = (() => {
   };
 
   const _logout = async () => {
+    // Open the Auth0 logout popup FIRST, synchronously within the sign-out click
+    // gesture, so Safari doesn't block it (window.open after an await gets
+    // blocked). A popup is a top-level, first-party context for the Auth0 domain,
+    // so the SSO session cookie is actually cleared — a hidden iframe would be
+    // treated as third-party and blocked by Safari's ITP. Without clearing it the
+    // next sign-in could silently reuse the still-active session. Auto-closed
+    // once it's had a moment to complete.
+    let logoutPopup = null;
+    if (browser) {
+      logoutPopup = window.open(
+        `https://${env.PUBLIC_AUTH0_DOMAIN}/v2/logout`,
+        'auth0-logout',
+        'width=500,height=600,left=100,top=100'
+      );
+    }
+
     // Grab the refresh token before we clear local state so we can revoke it
     const refreshToken = auth0.getRefreshToken?.();
 
@@ -194,21 +221,11 @@ export const user = (() => {
     await auth0.logout();
     _clearUser();
 
-    // Finally, end the Auth0 SSO session itself. Without it the next sign-in
-    // could silently reuse the still-active session. This must run in a browser
-    // context (the SSO cookie is first-party to the Auth0 domain and can't be
-    // cleared server-side). We use a hidden iframe (no popup, no visible UI).
-    if (browser) {
-      const logoutUrl = `https://${env.PUBLIC_AUTH0_DOMAIN}/v2/logout`;
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      iframe.src = logoutUrl;
-      document.body.appendChild(iframe);
-
-      // Give it a moment to complete, then remove the iframe
+    // Close the logout popup once it's had time to clear the SSO session.
+    if (logoutPopup) {
       setTimeout(() => {
-        document.body.removeChild(iframe);
-      }, 1000);
+        if (!logoutPopup.closed) logoutPopup.close();
+      }, 1500);
     }
   };
 
