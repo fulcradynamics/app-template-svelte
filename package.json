@@ -13,7 +13,9 @@
     "format": "prettier --write .",
     "lint": "prettier --check . && eslint .",
     "test:unit": "vitest",
-    "test": "npm run test:unit -- --run"
+    "test": "npm run test:deploy && npm run test:unit -- --run --passWithNoTests",
+    "deploy:fulcra": "node scripts/deploy-fulcra.mjs",
+    "test:deploy": "node --test scripts/deploy-fulcra.test.mjs"
   },
   "devDependencies": {
     "@eslint/compat": "^1.4.0",
@@ -40,5 +42,8 @@
   },
   "dependencies": {
     "daisyui": "^5.5.14"
+  },
+  "engines": {
+    "node": ">=24"
   }
 }
