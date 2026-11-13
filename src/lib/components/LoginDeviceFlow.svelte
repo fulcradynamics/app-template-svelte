@@ -1,6 +1,5 @@
 <script>
   import { user } from '$lib/user';
-  import fulcraLogo from '$lib/assets/app-icon_152.png';
   // import appLogo from '$lib/assets/your-logo.svg';
 
   // ---- fill these in for your app ----
@@ -69,11 +68,6 @@
         class="grid h-[30px] min-w-[86px] place-items-center rounded-[7px] border border-dashed border-[#3d3d44] bg-[repeating-linear-gradient(135deg,#ffffff08_0_6px,transparent_6px_12px)] px-3"
       >
         <span class="font-mono text-[9.5px] tracking-[0.09em] uppercase text-fulcra-gray">your logo</span>
-      </div>
-      <span class="text-[11px] uppercase tracking-[0.06em] leading-none text-fulcra-gray">powered by</span>
-      <div class="flex items-center gap-2">
-        <img src={fulcraLogo} alt="Fulcra" class="block h-[26px] w-[26px] rounded-md" />
-        <span class="text-[13.5px] font-medium tracking-[0.01em]">Fulcra</span>
       </div>
     </div>
     <div class="flex items-center gap-5 text-[13px]">

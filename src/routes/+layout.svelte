@@ -1,10 +1,13 @@
 <script>
   import './layout.css';
+  import FulcraBranding from '$lib/components/FulcraBranding.svelte';
   import { blur } from 'svelte/transition';
   import { page } from '$app/state';
 
   let { children } = $props();
 </script>
+
+<FulcraBranding />
 
 {#key page.url.pathname}
   <div class="flex h-full min-h-screen w-full flex-col p-3" in:blur>
