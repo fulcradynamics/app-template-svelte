@@ -12,23 +12,29 @@ A SvelteKit web application template for building on the Fulcra platform. This t
 ## Getting Started
 
 1. Install dependencies:
+
 ```bash
 npm install
 ```
 
 2. Configure environment variables:
+
 ```bash
 cp .env.example .env
 ```
+
 Then edit `.env` with your Auth0 credentials and Fulcra API endpoint.
 
 3. Run the development server:
+
 ```bash
 npm run dev
 ```
+
 The app will be available at http://localhost:6173/
 
 4. Build for production:
+
 ```bash
 npm run build
 ```
@@ -77,6 +83,24 @@ vercel deploy                # preview deploy
 vercel deploy --prod         # production deploy
 ```
 
+## Customization
+
+Edit `src/lib/app-config.js` for login branding: `appName`, `tagline`,
+`description`, `showSlots`, and optional `logoSrc` (for example `/logo.svg`
+from `static/`). The existing placeholder appearance is the default.
+`LoginDeviceFlow` also accepts optional props with these names, defaulting to the config.
+
+Build your feature UI in `src/routes/+page.svelte`. The root layout's `AuthGate`
+restores the server session before mounting feature children or showing login;
+cached localStorage user info alone never opens the gate. Keep initialization and
+login gating out of feature pages. Branding and feature customization should not
+require changes to auth components, the gate, `user.js`, `auth0-device-flow.js`,
+or server auth/API routes. Direct sign-out calls can remain in feature UI.
+
+The client gate controls rendering only; it does not authorize or prevent SvelteKit
+server loads. Server loads, API routes, and protected server-side fetches must still
+enforce authentication and authorization before returning protected data.
+
 ## Authentication
 
 This template includes Auth0 authentication out of the box, using the **Auth0 Device Authorization Flow** with server-side API proxying:
@@ -120,8 +144,10 @@ src/
 ├── lib/
 │   ├── auth0-device-flow.js        # Auth0 device authorization flow client
 │   ├── user.js                     # User/auth store (login, logout, session)
+│   ├── app-config.js               # Login branding customization
 │   ├── api-client.js               # FulcraAPI class for calling the Fulcra API
 │   └── components/
+│       ├── AuthGate.svelte         # Session restoration and login boundary
 │       └── LoginDeviceFlow.svelte  # Login screen
 └── routes/
     ├── layout.css                  # Global styles with Fulcra colors
