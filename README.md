@@ -20,7 +20,7 @@ npm install
 ```bash
 cp .env.example .env
 ```
-Then edit `.env` with your Auth0 credentials and Fulcra API endpoint.
+The example contains Fulcra’s public Auth0 client configuration. Keep those settings unless your platform owner supplies another approved client. Set the Fulcra API endpoint to a reachable API; keep server secrets runtime-only.
 
 3. Run the development server:
 ```bash
@@ -59,23 +59,24 @@ npm run build
 node build
 ```
 
-### Vercel
+### Fulcra-hosted personal deployment (default)
 
-**Git integration (recommended):**
-
-1. Import the repo at [vercel.com](https://vercel.com) — SvelteKit is auto-detected.
-2. Add the three env vars under Project Settings → Environment Variables.
-3. Every push deploys automatically.
-
-**CLI:**
+No separate Vercel account is needed. Use Node24, authenticate your own Fulcra CLI account, and choose your namespace:
 
 ```bash
-vercel login
-vercel link                  # create/link the project
-vercel env add PUBLIC_AUTH0_DOMAIN        # repeat for each var
-vercel deploy                # preview deploy
-vercel deploy --prod         # production deploy
+uvx fulcra-api auth login
+npm run deploy:fulcra -- your-name sveltekit your-name.my.fulcra.ai
 ```
+
+The included helper reuses your already-owned parked namespace or creates it, saves its returned identity before deploying, obtains a project-scoped token in memory, and repairs/readbacks Node/runtime and Svelte build settings. Only public settings are build variables; secrets stay server-side at runtime. Keep `.env` and `.private/` private and unique to this owner. Do not copy another deployment's keys or metadata.
+
+See [deployment and recovery](docs/deployment.md) for exact behavior, replacing an existing landing page, rollback, access failures and live acceptance. Deployment alone does not establish working sign-in or data access. Keep the official device flow intact. A personal app also needs server-side verified-owner authorization for its private pages/APIs; this starter's login alone does not define that policy.
+
+For durable cursors and periodic work, read [native state and scheduling](docs/native-state-and-scheduling.md) before provisioning a separate database or cron service. The same Fulcra-hosted project can run Workflow; integration and app-specific initialization must be implemented and tested. The full [connector template](https://connectors.my.fulcra.ai/guide) already packages that lifecycle.
+
+### Independently chosen hosting
+
+If you choose your own Vercel account, use its normal import/CLI flow and set public build variables and private runtime variables separately. Other hosts require their corresponding adapter and durable backing; the managed Workflow recipe relies on Vercel's queue isolation. This is an alternative, not a prerequisite for a Fulcra-hosted clone.
 
 ## Authentication
 
