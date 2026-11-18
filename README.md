@@ -162,9 +162,10 @@ route must use the shared server helper or otherwise independently authorize.
 The access cookie uses `HttpOnly`, `SameSite=Lax`, `Path=/`, no Domain, and `Secure`
 in production (disabled only in development for HTTP localhost/Safari). In production
 its name carries the `__Host-` prefix, so apps on sibling subdomains can't plant a
-cookie with the same name. It lasts the provider's `expires_in`, capped at 24 hours,
-and survives reloads and browser restarts. HTTP-only prevents JavaScript access, not
-theft through a compromised host/browser.
+cookie with the same name. It is a browser-session cookie (no `Max-Age`): it survives
+reloads, and quitting the browser ends it unless the browser restores sessions. The
+token inside expires after 24 hours either way. HTTP-only prevents JavaScript access,
+not theft through a compromised host/browser.
 
 `src/hooks.server.js` rejects every unsafe request with a missing or foreign
 Origin, including JSON device-code, token, registration, and logout routes, and
@@ -182,7 +183,7 @@ response cannot undo logout. The gate shows “Signing out” with no account da
 login controls. Each wait is capped at 10 seconds; a timeout shows a warning and a
 retry Sign Out button, not success, and new login and feature requests stay blocked
 until a retry confirms sign-out. Closing the page without signing out leaves the app
-signed in in that browser until the access token expires. Signing out does not revoke
+signed in in that browser until the token expires or the browser quits. Signing out does not revoke
 an already-issued access token at the API.
 
 Tests exercise mocked provider responses and browser UI/state transitions. Live
