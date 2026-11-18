@@ -27,12 +27,12 @@ it('stores both tokens with deliberate secure HTTP-only lifetimes', () => {
   const jar = cookies();
   session.storeTokens(jar, { access_token: 'access', refresh_token: 'refresh', expires_in: 120 });
   expect(jar.set).toHaveBeenCalledWith(
-    'fulcra_access_token',
+    '__Host-fulcra_access_token',
     'access',
     expect.objectContaining({ httpOnly: true, secure: true, sameSite: 'lax', maxAge: 120 })
   );
   expect(jar.set).toHaveBeenCalledWith(
-    'fulcra_refresh_token',
+    '__Host-fulcra_refresh_token',
     'refresh',
     expect.objectContaining({ httpOnly: true, maxAge: 2592000 })
   );
@@ -42,14 +42,14 @@ it('coalesces refresh and replaces rotated cookies for every concurrent caller',
     reply({ access_token: 'new', refresh_token: 'rotated', expires_in: 60 })
   );
   vi.stubGlobal('fetch', fetcher);
-  const a = cookies({ fulcra_refresh_token: 'old' });
-  const b = cookies({ fulcra_refresh_token: 'old' });
+  const a = cookies({ '__Host-fulcra_refresh_token': 'old' });
+  const b = cookies({ '__Host-fulcra_refresh_token': 'old' });
   expect(await Promise.all([session.accessToken(a), session.accessToken(b)])).toEqual([
     'new',
     'new'
   ]);
   expect(fetcher).toHaveBeenCalledOnce();
-  expect(b.get('fulcra_refresh_token')).toBe('rotated');
+  expect(b.get('__Host-fulcra_refresh_token')).toBe('rotated');
 });
 it.each([
   ['invalid_grant', 401, true],
@@ -59,12 +59,15 @@ it.each([
     'fetch',
     vi.fn(async () => reply({ error: code }, 400))
   );
-  const jar = cookies({ fulcra_refresh_token: 'old' });
+  const jar = cookies({ '__Host-fulcra_refresh_token': 'old' });
   await expect(session.accessToken(jar)).rejects.toMatchObject({ status });
   expect(jar.delete.mock.calls.length > 0).toBe(cleared);
 });
 it('refreshes a rejected GET once, but never replays an unsafe request', async () => {
-  const jar = cookies({ fulcra_access_token: 'expired', fulcra_refresh_token: 'refresh' });
+  const jar = cookies({
+    '__Host-fulcra_access_token': 'expired',
+    '__Host-fulcra_refresh_token': 'refresh'
+  });
   const fetcher = vi
     .fn()
     .mockResolvedValueOnce(reply({}, 401))
@@ -105,7 +108,10 @@ it('rejects foreign and missing origins for JSON mutations including logout', as
   }
 });
 it('revokes from cookies and clears them even when the provider fails', async () => {
-  const jar = cookies({ fulcra_refresh_token: 'reload-token', fulcra_access_token: 'access' });
+  const jar = cookies({
+    '__Host-fulcra_refresh_token': 'reload-token',
+    '__Host-fulcra_access_token': 'access'
+  });
   const fetcher = vi.fn(async (url, options) => {
     expect(JSON.parse(options.body).token).toBe('reload-token');
     return reply({}, 503);
@@ -113,8 +119,8 @@ it('revokes from cookies and clears them even when the provider fails', async ()
   vi.stubGlobal('fetch', fetcher);
   expect(await session.logout(jar)).toBe(false);
 
-  expect(jar.get('fulcra_refresh_token')).toBeUndefined();
-  expect(jar.get('fulcra_access_token')).toBeUndefined();
+  expect(jar.get('__Host-fulcra_refresh_token')).toBeUndefined();
+  expect(jar.get('__Host-fulcra_access_token')).toBeUndefined();
 });
 
 it('device exchange stores cookies but returns neither access nor refresh tokens', async () => {
@@ -141,8 +147,8 @@ it('device exchange stores cookies but returns neither access nor refresh tokens
     })
   );
   expect(await result.json()).toEqual({ status: 200 });
-  expect(jar.get('fulcra_access_token')).toBe('secret-access');
-  expect(jar.get('fulcra_refresh_token')).toBe('secret-refresh');
+  expect(jar.get('__Host-fulcra_access_token')).toBe('secret-access');
+  expect(jar.get('__Host-fulcra_refresh_token')).toBe('secret-refresh');
 });
 
 it('requires offline access at login rather than silently issuing a non-renewable session', async () => {
@@ -160,7 +166,10 @@ it('requires offline access at login rather than silently issuing a non-renewabl
 });
 
 it('does not refresh on permission denial or discard cookies on network errors', async () => {
-  const jar = cookies({ fulcra_access_token: 'access', fulcra_refresh_token: 'refresh' });
+  const jar = cookies({
+    '__Host-fulcra_access_token': 'access',
+    '__Host-fulcra_refresh_token': 'refresh'
+  });
   const fetcher = vi.fn(async () => reply({}, 403));
   vi.stubGlobal('fetch', fetcher);
   await expect(session.authorizedFetch(jar, 'https://api.example/info')).rejects.toMatchObject({
@@ -178,12 +187,12 @@ it('does not revive a rotated token from the grace cache after logout', async ()
     'fetch',
     vi.fn(async () => reply({ access_token: 'new', refresh_token: 'rotated', expires_in: 60 }))
   );
-  const jar = cookies({ fulcra_refresh_token: 'old' });
+  const jar = cookies({ '__Host-fulcra_refresh_token': 'old' });
   await session.accessToken(jar);
   await session.logout(jar);
-  await expect(session.accessToken(cookies({ fulcra_refresh_token: 'old' }))).rejects.toMatchObject(
-    { status: 401 }
-  );
+  await expect(
+    session.accessToken(cookies({ '__Host-fulcra_refresh_token': 'old' }))
+  ).rejects.toMatchObject({ status: 401 });
 });
 
 it('allows same-origin mutations and marks API responses non-cacheable', async () => {
@@ -213,17 +222,17 @@ it('coordinates logout with an overlapping refresh and revokes its rotated token
     return reply({});
   });
   vi.stubGlobal('fetch', fetcher);
-  const refreshing = cookies({ fulcra_refresh_token: 'old' });
-  const leaving = cookies({ fulcra_refresh_token: 'old' });
+  const refreshing = cookies({ '__Host-fulcra_refresh_token': 'old' });
+  const leaving = cookies({ '__Host-fulcra_refresh_token': 'old' });
   const denied = expect(session.accessToken(refreshing)).rejects.toMatchObject({ status: 401 });
   const logout = session.logout(leaving);
   expect(fetcher).toHaveBeenCalledOnce();
-  expect(leaving.get('fulcra_refresh_token')).toBeUndefined();
+  expect(leaving.get('__Host-fulcra_refresh_token')).toBeUndefined();
   finish(reply({ access_token: 'new', refresh_token: 'rotated', expires_in: 60 }));
   await denied;
   expect(await logout).toBe(true);
   expect(refreshing.set).not.toHaveBeenCalled();
-  expect(refreshing.get('fulcra_refresh_token')).toBeUndefined();
+  expect(refreshing.get('__Host-fulcra_refresh_token')).toBeUndefined();
   expect(fetcher).toHaveBeenCalledTimes(2);
 });
 
@@ -240,4 +249,21 @@ it('rejects cross-site Fetch Metadata even with a matching Origin', async () => 
   const result = await handle({ event: /** @type {any} */ (event), resolve });
   expect(result.status).toBe(403);
   expect(resolve).not.toHaveBeenCalled();
+});
+it('drops the __Host- prefix in development, where cookies are not Secure', async () => {
+  vi.resetModules();
+  vi.doMock('$app/environment', () => ({ dev: true }));
+  const devSession = await import('./session.js');
+  const jar = cookies();
+  devSession.storeTokens(jar, {
+    access_token: 'access',
+    refresh_token: 'refresh',
+    expires_in: 120
+  });
+  expect(jar.set).toHaveBeenCalledWith(
+    'fulcra_refresh_token',
+    'refresh',
+    expect.objectContaining({ secure: false })
+  );
+  vi.doUnmock('$app/environment');
 });
