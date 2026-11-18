@@ -260,7 +260,7 @@ it.each([false, true])(
   'opens login synchronously, supports blocked popup (%s), completes login and signs out',
   async (blocked) => {
     const code = deferred();
-    const revoke = deferred();
+    const signOut = deferred();
     const popup = { closed: false, location: { href: '' }, close: vi.fn() };
     const logoutPopup = { closed: false, close: vi.fn() };
     const open = vi
@@ -284,7 +284,7 @@ it.each([false, true])(
       if (url === '/api/auth/token') return response({});
       if (url === '/api/auth/user') return response(profile);
       if (url === '/api/user/info') return response({});
-      if (url === '/api/auth/revoke') return revoke.promise;
+      if (url === '/api/auth/logout') return signOut.promise;
       throw new Error(`Unexpected ${url} ${options?.method}`);
     });
     vi.stubGlobal('fetch', fetcher);
@@ -312,7 +312,11 @@ it.each([false, true])(
     await vi.advanceTimersByTimeAsync(1000);
     expect(screen.getByText('Private feature')).toBeTruthy();
     expect(fetcher.mock.calls.some(([url]) => url === '/api/auth/token')).toBe(false);
+    // Signed in: the popup signs out of Auth0, then closes.
+    if (!blocked) expect(popup.location.href).toBe('https://auth.example/v2/logout');
+    await vi.advanceTimersByTimeAsync(1500);
     if (!blocked) expect(popup.close).toHaveBeenCalledOnce();
+    expect(screen.getByText('Private feature')).toBeTruthy();
     const logout = user.logout();
     expect(open).toHaveBeenLastCalledWith(
       'https://auth.example/v2/logout',
@@ -320,13 +324,13 @@ it.each([false, true])(
       'width=500,height=600,left=100,top=100'
     );
     await vi.advanceTimersByTimeAsync(0);
-    const revokeIndex = fetcher.mock.calls.findIndex(([url]) => url === '/api/auth/revoke');
+    const logoutIndex = fetcher.mock.calls.findIndex(([url]) => url === '/api/auth/logout');
     expect(open.mock.invocationCallOrder[1]).toBeLessThan(
-      fetcher.mock.invocationCallOrder[revokeIndex]
+      fetcher.mock.invocationCallOrder[logoutIndex]
     );
     await vi.advanceTimersByTimeAsync(0);
-    expect(fetcher).toHaveBeenCalledWith('/api/auth/revoke', { method: 'POST' });
-    revoke.resolve(response({}));
+    expect(fetcher).toHaveBeenCalledWith('/api/auth/logout', { method: 'POST' });
+    signOut.resolve(response({}));
     await logout;
     await vi.advanceTimersByTimeAsync(1500);
     expect(localStorage.getItem('fulcraUserState')).toBeNull();
@@ -409,7 +413,7 @@ it('waits for an in-flight login response before logout and cannot publish its p
   const fetcher = vi.fn(async (url) => {
     if (url === '/api/auth/device/code') return response(device);
     if (url === '/api/auth/device/token') return token.promise;
-    if (url === '/api/auth/revoke') return response({ revoked: true });
+    if (url === '/api/auth/logout') return response({ signedOut: true });
     throw new Error(`Unexpected ${url}`);
   });
   vi.stubGlobal('fetch', fetcher);
@@ -420,11 +424,11 @@ it('waits for an in-flight login response before logout and cannot publish its p
   const rejected = expect(login).rejects.toThrow('Login cancelled');
   await vi.advanceTimersByTimeAsync(1000);
   const logout = user.logout();
-  expect(fetcher.mock.calls.some(([url]) => url === '/api/auth/revoke')).toBe(false);
+  expect(fetcher.mock.calls.some(([url]) => url === '/api/auth/logout')).toBe(false);
   token.resolve(response({ status: 200 }));
   await rejected;
   await logout;
-  expect(fetcher).toHaveBeenLastCalledWith('/api/auth/revoke', { method: 'POST' });
+  expect(fetcher).toHaveBeenLastCalledWith('/api/auth/logout', { method: 'POST' });
   expect(get(user).status).toBe('signed-out');
   expect(get(user).auth0UserInfo).toEqual({});
 });
@@ -476,21 +480,20 @@ it.each([401, 503])('classifies profile %s after device login like restoration',
   expect(get(user).auth0UserInfo).toEqual({});
 });
 
-it.each(['pending', 'revoke', 'revoke-body'])(
+it.each(['pending', 'logout'])(
   'bounds %s waits, keeps old work tracked and offers visible sign-out recovery',
   async (kind) => {
     vi.spyOn(window, 'open').mockReturnValue(null);
     const stuck = deferred();
-    let revokes = 0;
+    let logouts = 0;
     const fetcher = vi.fn(async (url) => {
       if (url === '/api/auth/user') return response(profile);
       if (url === '/api/user/info') return response({});
       if (url === '/api/user/preferences') return stuck.promise;
-      if (url === '/api/auth/revoke') {
-        revokes++;
-        if (revokes === 1 && kind === 'revoke') return stuck.promise;
-        if (revokes === 1 && kind === 'revoke-body') return { ok: true, json: () => stuck.promise };
-        return response({ revoked: true });
+      if (url === '/api/auth/logout') {
+        logouts++;
+        if (logouts === 1 && kind === 'logout') return stuck.promise;
+        return response({ signedOut: true });
       }
       throw new Error(`Unexpected ${url}`);
     });
@@ -514,20 +517,20 @@ it.each(['pending', 'revoke', 'revoke-body'])(
     expect(screen.queryByRole('button', { name: 'Sign In' })).toBeNull();
     await expect(user.startLogin(null)).rejects.toThrow(/Sign-out/);
     await expect(user.request('/api/user/preferences')).rejects.toThrow(/Sign-out/);
-    const expectedRevokes = kind === 'pending' ? 0 : 1;
-    expect(revokes).toBe(expectedRevokes);
-    // Retrying while the request never settles must time out without another revoke.
+    const expectedLogouts = kind === 'pending' ? 0 : 1;
+    expect(logouts).toBe(expectedLogouts);
+    // Retrying while the request never settles must time out without another logout.
     screen.getByRole('button', { name: 'Sign Out' }).click();
     await vi.advanceTimersByTimeAsync(10000);
     expect(screen.getByRole('alert')).toBeTruthy();
-    expect(revokes).toBe(expectedRevokes);
-    stuck.resolve(kind === 'revoke-body' ? { revoked: true } : response({ revoked: true }));
+    expect(logouts).toBe(expectedLogouts);
+    stuck.resolve(response({ signedOut: true }));
     await vi.advanceTimersByTimeAsync(0);
     expect(get(user).status).toBe('error');
     expect(screen.queryByText('Private feature')).toBeNull();
     screen.getByRole('button', { name: 'Sign Out' }).click();
     await vi.advanceTimersByTimeAsync(0);
-    expect(revokes).toBe(expectedRevokes + 1);
+    expect(logouts).toBe(expectedLogouts + 1);
     expect(screen.getByRole('button', { name: 'Sign In' })).toBeTruthy();
   }
 );

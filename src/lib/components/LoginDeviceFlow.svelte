@@ -40,12 +40,8 @@
 
       // Start polling for token
       polling = true;
+      // On success, user.js signs the popup out of Auth0 and closes it.
       await user.completeLogin(verificationInfo.deviceCode, verificationInfo.interval);
-
-      // Close popup if still open
-      if (popup && !popup.closed) {
-        popup.close();
-      }
 
       // If we get here, login succeeded
       polling = false;

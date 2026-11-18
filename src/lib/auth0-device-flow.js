@@ -9,7 +9,7 @@
  * 2. Display verification URL and user code to user
  * 3. User visits URL on any device and enters code
  * 4. Poll Auth0 until user completes authentication
- * 5. Server stores tokens in HTTP-only cookies; browser receives success only
+ * 5. Server stores the access token in an HTTP-only cookie; browser receives success only
  */
 
 export class Auth0DeviceFlow {

@@ -49,7 +49,7 @@ This template uses `@sveltejs/adapter-auto`, which detects the host at build tim
 - `PUBLIC_AUTH0_CLIENT_ID`
 - `PUBLIC_FULCRA_API_ENDPOINT` (point this at a reachable API — not `localhost`)
 
-> Device-flow login uses no callback URLs, and logout uses no `returnTo`. Auth0 must allow the device-code and refresh-token grants, and the API must allow offline access; see Authentication below. Production requires HTTPS for Secure cookies. Configure the deployment's public origin correctly behind proxies so same-origin checks see the browser-facing origin.
+> Device-flow login uses no callback URLs, and logout uses no `returnTo`. Auth0 must allow the device-code grant for this client; see Authentication below. Production requires HTTPS for Secure cookies. Configure the deployment's public origin correctly behind proxies so same-origin checks see the browser-facing origin.
 
 ### Local
 
@@ -107,10 +107,10 @@ enforce authentication and authorization before returning protected data.
 
 ## Authentication
 
-This template uses the **Auth0 Device Authorization Flow**. Tokens are exchanged,
-renewed, and revoked only on the server. Access and refresh tokens are always
-persisted in host-only HTTP-only cookies; neither token nor the ID token is
-returned in browser JSON. There is no “keep me signed in” option.
+This template uses the **Auth0 Device Authorization Flow**. The session is only the
+Fulcra access token, kept by the server in a host-only HTTP-only cookie; no token is
+returned in browser JSON. There is no refresh token, so people sign in again when the
+access token expires (24 hours).
 
 ### Session state and restoration
 
@@ -135,38 +135,27 @@ route must use the shared server helper or otherwise independently authorize.
    the app shows the sign-in link (one click selects it), a QR code and the user code,
    so people in embedded browsers that block popups can finish in their main browser
    or on a phone.
-2. `/api/auth/device/code` requests `openid profile email offline_access`.
-3. The browser polls `/api/auth/device/token`; success sets both cookies on the
-   server and returns only status. The old browser token-setting endpoint is removed.
-4. `/api/auth/user` validates against Auth0. `/api/user/info` POST loads the Fulcra
+2. `/api/auth/device/code` requests `openid profile email`.
+3. The browser polls `/api/auth/device/token`; success sets the access cookie on the
+   server and returns only status.
+4. Once signed in, the popup visits Auth0 logout again and closes, so Auth0 keeps no
+   session in that browser and the next person there must enter a password. The
+   app's own cookie is unaffected. Approving in another browser or on a phone leaves
+   that browser's Auth0 session alone.
+5. `/api/auth/user` validates against Auth0. `/api/user/info` POST loads the Fulcra
    account and registers it if missing; GET only reads and never registers.
-5. Server routes share `src/lib/server/session.js` (`authorizedFetch`) through
-   `src/lib/server/api.js` for Fulcra API calls. Missing access cookies trigger
-   renewal from the refresh cookie. An upstream 401 on a safe read triggers one
-   renewal and retry, including when an old access cookie is present but expired.
-   Rotated refresh tokens replace the cookie; non-rotating responses retain it.
-   `invalid_grant` clears cookies and returns 401. Transient renewal/network errors
-   preserve cookies and return 503; permission denial returns 403 without refresh.
-   Unsafe requests are validated before sending and are never automatically replayed.
-
-Auth0 must enable the device-code and refresh-token grants for this client and
-**Allow Offline Access** for the API audience. Merely requesting `offline_access`
-is not sufficient. Login fails explicitly if the provider does not issue a refresh
-token or a valid access-token lifetime. Provider refresh-token expiration, rotation,
-and reuse-detection policies remain authoritative.
+6. Server routes call the Fulcra API through `src/lib/server/api.js` (`apiFor`), which
+   uses `authorizedFetch` from `src/lib/server/session.js`. A missing cookie or an
+   upstream 401 clears the cookie and returns 401; 403 and network errors keep it.
 
 ### Cookie policy and CSRF
 
-Both cookies use `HttpOnly`, `SameSite=Lax`, `Path=/`, no Domain, and `Secure` in
-production (disabled only in development for HTTP localhost/Safari). In production
-their names carry the `__Host-` prefix, so apps on sibling subdomains can't plant
-cookies with the same names. The access
-cookie lasts the provider's `expires_in`, capped at 24 hours. The refresh cookie
-lasts 30 days from each successful exchange/renewal (a sliding browser retention
-window, **not** a promise of a 30-day authenticated session or a server-enforced
-absolute lifetime). Auth0 may expire/revoke tokens sooner. Persistent cookies
-survive browser restarts, subject to browser policy; HTTP-only prevents JavaScript
-access, not theft through a compromised host/browser.
+The access cookie uses `HttpOnly`, `SameSite=Lax`, `Path=/`, no Domain, and `Secure`
+in production (disabled only in development for HTTP localhost/Safari). In production
+its name carries the `__Host-` prefix, so apps on sibling subdomains can't plant a
+cookie with the same name. It lasts the provider's `expires_in`, capped at 24 hours,
+and survives reloads and browser restarts. HTTP-only prevents JavaScript access, not
+theft through a compromised host/browser.
 
 `src/hooks.server.js` rejects every unsafe request with a missing or foreign
 Origin, including JSON device-code, token, registration, and logout routes, and
@@ -175,46 +164,21 @@ POST. Non-browser clients must supply the correct Origin too; this check is CSRF
 protection, not authentication. API responses are `Cache-Control: no-store`.
 Do not add mutations to GET handlers.
 
-### Logout and concurrency limits
+### Logout
 
-Sign Out clears in-memory profiles immediately and opens the Auth0 SSO logout
-popup synchronously, before any await. Popup navigation/closure is best effort;
-a timed dwell cannot prove that Auth0 cleared SSO. Generation checks cancel stale
-initialization/login work. In-flight browser operations settle before the logout
-POST so late Set-Cookie responses cannot undo same-tab logout. Polling sleeps are
-cancelled, but an in-flight exchange is allowed to settle before cookies are cleared.
-The gate shows “Signing out” with no account data or login controls. Each attempt
-waits up to 10 seconds for tracked operations, then up to 10 seconds for the revoke
-response (including its body). A timeout shows an inability-to-confirm warning and
-a retry Sign Out button, not success. Underlying requests are not aborted or removed
-from tracking by this timeout; aborting a browser fetch would not prove cancellation
-on the server. Retries still wait for old work, including a timed-out revoke, before
-sending another revoke. Late completions cannot restore profiles or dismiss the
-warning. New login and feature requests remain blocked until a retry confirms
-sign-out. If a request never settles, retries remain safe but cannot finish sign-out;
-JavaScript cannot force-clear HTTP-only cookies. Reloading loses this in-memory
-coordination and can restore a still-active server session.
-
-`/api/auth/revoke` reads the refresh token from its HTTP-only cookie, including
-after reload, revokes it server-side, and clears both cookies even if revocation
-fails. A revocation failure is reported explicitly; a network failure reaching the
-logout route leaves an error with a retry Sign Out button, since JavaScript cannot
-clear HTTP-only cookies. Revoking a refresh token does not immediately invalidate
-already-issued access tokens at every upstream API.
-
-Concurrent renewal is coalesced **within one server process**, with a five-second
-result grace window so overlapping old-cookie requests share a rotated token.
-Logout marks matching cached rotations revoked. This is not a distributed session
-store: multiple instances, serverless cold starts, other tabs, delayed responses,
-or a rotation beyond that window can still race, trigger provider reuse detection,
-or overwrite newer cookies. There is no cross-tab reactive synchronization or
-server-wide session tombstone. For stronger guarantees, use a shared server session
-store and distributed refresh/logout coordination; configure Auth0's rotation reuse
-interval appropriately rather than assuming this process-local cache solves it.
+Sign Out clears in-memory profiles immediately and opens the Auth0 logout popup
+synchronously, before any await; popup navigation is best effort. In-flight browser
+operations settle before `/api/auth/logout` clears the cookie, so a late Set-Cookie
+response cannot undo logout. The gate shows “Signing out” with no account data or
+login controls. Each wait is capped at 10 seconds; a timeout shows a warning and a
+retry Sign Out button, not success, and new login and feature requests stay blocked
+until a retry confirms sign-out. Closing the page without signing out leaves the app
+signed in in that browser until the access token expires. Signing out does not revoke
+an already-issued access token at the API.
 
 Tests exercise mocked provider responses and browser UI/state transitions. Live
-Auth0 issuance, rotation/revocation policy, deployed HTTPS cookies, and real Safari
-SSO behavior require deployment testing with credentials.
+Auth0 sign-in, deployed HTTPS cookies, and real Safari behavior require deployment
+testing with credentials.
 
 ## Fulcra API Client
 
@@ -222,7 +186,7 @@ The template includes a `FulcraAPI` class (`src/lib/api-client.js`) for organize
 
 - **High-level methods** for common operations: `getUserInfo()`, `getUserPreferences()`, etc.
 - **Low-level HTTP methods** for flexibility: `get()`, `post()`, `put()`, `delete()`
-- **Designed for extension** — add new methods following the existing pattern; server routes obtain the client through `apiFor(cookies)` so they share renewal and authorization
+- **Designed for extension** — add new methods following the existing pattern; server routes obtain the client through `apiFor(cookies)` so they share authorization
 
 See the [Fulcra REST API documentation](https://docs.fulcradynamics.com/rest-api/) for available endpoints. When you need to call a new endpoint, add a method to `FulcraAPI` and use it from your server routes.
 
@@ -246,7 +210,7 @@ src/
     ├── +layout.svelte              # Root layout
     ├── +page.svelte                # Home page
     └── api/                        # Server routes (auth + API proxy)
-        ├── auth/                   # device/code, device/token, user, revoke
+        ├── auth/                   # device/code, device/token, user, logout
         └── user/                   # info, preferences
 ```
 
