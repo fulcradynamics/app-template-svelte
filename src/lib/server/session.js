@@ -2,8 +2,11 @@ import { env } from '$env/dynamic/public';
 import { dev } from '$app/environment';
 import { error, isHttpError } from '@sveltejs/kit';
 
-const ACCESS = 'fulcra_access_token';
-const REFRESH = 'fulcra_refresh_token';
+// The __Host- prefix stops other subdomains from planting these cookies. Browsers require
+// Secure for it, so development over HTTP localhost uses the plain names.
+const prefix = dev ? '' : '__Host-';
+const ACCESS = `${prefix}fulcra_access_token`;
+const REFRESH = `${prefix}fulcra_refresh_token`;
 const cookieOptions = {
   path: '/',
   httpOnly: true,

@@ -154,7 +154,9 @@ and reuse-detection policies remain authoritative.
 ### Cookie policy and CSRF
 
 Both cookies use `HttpOnly`, `SameSite=Lax`, `Path=/`, no Domain, and `Secure` in
-production (disabled only in development for HTTP localhost/Safari). The access
+production (disabled only in development for HTTP localhost/Safari). In production
+their names carry the `__Host-` prefix, so apps on sibling subdomains can't plant
+cookies with the same names. The access
 cookie lasts the provider's `expires_in`, capped at 24 hours. The refresh cookie
 lasts 30 days from each successful exchange/renewal (a sliding browser retention
 window, **not** a promise of a 30-day authenticated session or a server-enforced
