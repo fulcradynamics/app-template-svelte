@@ -2,7 +2,8 @@ import { dev } from '$app/environment';
 import { error } from '@sveltejs/kit';
 
 // The session is only the access token, in an HTTP-only cookie. There is no refresh token,
-// so people sign in again when it expires.
+// so people sign in again when it expires. It's a browser-session cookie (no Max-Age), so
+// quitting the browser also ends it, where the browser doesn't restore sessions.
 // The __Host- prefix stops other subdomains from planting this cookie. Browsers require
 // Secure for it, so development over HTTP localhost uses the plain name.
 const ACCESS = `${dev ? '' : '__Host-'}fulcra_access_token`;
@@ -24,10 +25,7 @@ export function storeSession(cookies, tokens) {
   if (!tokens.access_token || !Number.isFinite(tokens.expires_in) || tokens.expires_in <= 0) {
     error(502, 'Identity provider did not issue a session');
   }
-  cookies.set(ACCESS, tokens.access_token, {
-    ...cookieOptions,
-    maxAge: Math.min(Math.floor(tokens.expires_in), 86400)
-  });
+  cookies.set(ACCESS, tokens.access_token, cookieOptions);
 }
 
 // Validate on the upstream server, not by cookie presence or unverified JWT claims.

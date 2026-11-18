@@ -23,20 +23,15 @@ beforeEach(async () => {
 afterEach(() => {
   vi.unstubAllGlobals();
 });
-it('stores the access token in a secure HTTP-only cookie for at most 24 hours', () => {
+it('stores the access token in a secure HTTP-only browser-session cookie', () => {
   const jar = cookies();
   session.storeSession(jar, { access_token: 'access', expires_in: 120 });
-  expect(jar.set).toHaveBeenCalledWith(
-    '__Host-fulcra_access_token',
-    'access',
-    expect.objectContaining({ httpOnly: true, secure: true, sameSite: 'lax', maxAge: 120 })
-  );
-  session.storeSession(jar, { access_token: 'access', expires_in: 7 * 86400 });
-  expect(jar.set).toHaveBeenLastCalledWith(
-    '__Host-fulcra_access_token',
-    'access',
-    expect.objectContaining({ maxAge: 86400 })
-  );
+  expect(jar.set).toHaveBeenCalledWith('__Host-fulcra_access_token', 'access', {
+    path: '/',
+    httpOnly: true,
+    secure: true,
+    sameSite: 'lax'
+  });
 });
 it('rejects a token response without a usable lifetime', () => {
   const jar = cookies();
