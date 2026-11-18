@@ -16,6 +16,9 @@ export const user = (() => {
   });
   const { subscribe, set } = writable(empty('restoring'));
   const auth = new Auth0DeviceFlow();
+  const auth0Logout = `https://${env.PUBLIC_AUTH0_DOMAIN}/v2/logout`;
+  /** @type {Window | null} */
+  let loginPopup = null;
   let generation = 0;
   /** @type {Promise<void> | undefined} */
   let initialized;
@@ -118,8 +121,8 @@ export const user = (() => {
     return track(
       (async () => {
         const started = Date.now();
-        if (popup && !popup.closed)
-          popup.location.href = `https://${env.PUBLIC_AUTH0_DOMAIN}/v2/logout`;
+        loginPopup = popup;
+        if (popup && !popup.closed) popup.location.href = auth0Logout;
         const info = await auth.startDeviceFlow();
         requireCurrent(version);
         if (popup && !popup.closed) {
@@ -142,6 +145,15 @@ export const user = (() => {
         requireCurrent(version);
         await auth.pollForToken(deviceCode, interval, () => current(version), loginAbort.signal);
         requireCurrent(version);
+        // Sign out of Auth0 itself so the next person on this browser needs a password.
+        // The app's own cookie keeps this session. Best effort, like the logout popup.
+        const popup = loginPopup;
+        if (popup && !popup.closed) {
+          popup.location.href = auth0Logout;
+          setTimeout(() => {
+            if (!popup.closed) popup.close();
+          }, 1500);
+        }
         try {
           await profiles(version);
         } catch (err) {
@@ -169,11 +181,7 @@ export const user = (() => {
     let popup;
     try {
       if (browser)
-        popup = window.open(
-          `https://${env.PUBLIC_AUTH0_DOMAIN}/v2/logout`,
-          'auth0-logout',
-          'width=500,height=600,left=100,top=100'
-        );
+        popup = window.open(auth0Logout, 'auth0-logout', 'width=500,height=600,left=100,top=100');
     } catch {
       /* Popup blocked. */
     }
@@ -192,28 +200,18 @@ export const user = (() => {
     loggingOut = (async () => {
       try {
         await bounded(Promise.allSettled([...pending]));
-        // Bound the UI wait, not the operation. Keep even a timed-out revoke
-        // tracked so it cannot later clear cookies belonging to a new login.
-        const result = await bounded(
+        // Bound the UI wait, not the operation. Keep even a timed-out logout
+        // tracked so it cannot later clear the cookie of a new login.
+        await bounded(
           track(
             (async () => {
-              const response = await fetch('/api/auth/revoke', { method: 'POST' });
+              const response = await fetch('/api/auth/logout', { method: 'POST' });
               if (!response.ok) throw new Error('Sign-out failed');
-              return await response.json();
             })()
           )
         );
-        if (result.revoked === false)
-          set(
-            empty(
-              'error',
-              'Signed out locally, but token revocation failed. The provider session may remain active.'
-            )
-          );
-        else {
-          signOutRequired = false;
-          set(empty('signed-out'));
-        }
+        signOutRequired = false;
+        set(empty('signed-out'));
       } catch {
         set(
           empty(

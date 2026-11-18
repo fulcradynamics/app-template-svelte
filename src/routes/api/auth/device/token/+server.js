@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/public';
 import { error, json } from '@sveltejs/kit';
-import { storeTokens } from '$lib/server/session.js';
+import { storeSession } from '$lib/server/session.js';
 
 export async function POST({ request, cookies }) {
   const { deviceCode } = await request.json();
@@ -22,7 +22,7 @@ export async function POST({ request, cookies }) {
   }
   const data = await response.json();
   if (response.ok) {
-    storeTokens(cookies, data);
+    storeSession(cookies, data);
     return json({ status: 200 });
   }
   // Allowlist errors; never forward provider token payloads to the browser.
