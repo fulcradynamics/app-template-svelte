@@ -2,6 +2,7 @@
   import { user } from '$lib/user';
   import fulcraLogo from '$lib/assets/app-icon_152.png';
   import { appConfig } from '$lib/app-config.js';
+  import SignInHandoff from './SignInHandoff.svelte';
 
   let {
     appName = appConfig.appName,
@@ -128,7 +129,9 @@
       </div>
 
       <div class="rounded-lg border border-solid border-fulcra-black-25 bg-[#1b1b23] p-[22px]">
-        <h2 class="mb-4 text-[15px] font-medium tracking-[-0.01em]">Get started</h2>
+        <h2 class="mb-4 text-[15px] font-medium tracking-[-0.01em]">
+          {verificationInfo ? 'Was the sign-in popup blocked?' : 'Get started'}
+        </h2>
 
         {#if !verificationInfo}
           <div class="flex flex-col gap-2.5">
@@ -165,16 +168,10 @@
             >.
           </p>
         {:else}
-          <p class="text-[13px] leading-[1.6] text-fulcra-gray">
-            A popup window has opened. Enter this code to continue:
-          </p>
-          <div
-            class="mt-3 rounded-lg border border-solid border-fulcra-black-25 bg-fulcra-black-50 px-3 py-3 text-center"
-          >
-            <span class="font-mono text-2xl tracking-widest text-fulcra-white"
-              >{verificationInfo.userCode}</span
-            >
-          </div>
+          <SignInHandoff
+            verificationUri={verificationInfo.verificationUri}
+            userCode={verificationInfo.userCode}
+          />
 
           {#if polling}
             <div class="mt-4 flex items-center justify-center gap-2 text-fulcra-gray">
@@ -182,17 +179,6 @@
               <span class="text-[13px]">Waiting for authentication…</span>
             </div>
           {/if}
-
-          <p class="mt-4 text-[12px] leading-[1.6] text-fulcra-gray">
-            Popup blocked?
-            <a
-              href={verificationInfo.verificationUri}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-fulcra-teal underline hover:text-fulcra-white"
-              >Open the verification page</a
-            >.
-          </p>
         {/if}
       </div>
 

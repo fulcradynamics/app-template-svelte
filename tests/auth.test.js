@@ -303,9 +303,9 @@ it.each([false, true])(
     code.resolve(response(device));
     await vi.advanceTimersByTimeAsync(blocked ? 0 : 1200);
     expect(screen.getByText('ABCD')).toBeTruthy();
-    expect(
-      screen.getByRole('link', { name: 'Open the verification page' }).getAttribute('href')
-    ).toBe(device.verification_uri_complete);
+    expect(screen.getByLabelText('Sign-in link').textContent?.trim()).toBe(
+      device.verification_uri_complete
+    );
     if (!blocked) expect(popup.location.href).toBe(device.verification_uri_complete);
     await vi.advanceTimersByTimeAsync(1000);
     expect(screen.getByText('Private feature')).toBeTruthy();

@@ -127,7 +127,10 @@ route must use the shared server helper or otherwise independently authorize.
 ### Login and server API access
 
 1. The sign-in click opens a popup synchronously (including Safari). It visits
-   Auth0 logout briefly, then the verification page; blocked popups have a link fallback.
+   Auth0 logout briefly, then the verification page. While authorization is pending,
+   the app shows the sign-in link (one click selects it), a QR code and the user code,
+   so people in embedded browsers that block popups can finish in their main browser
+   or on a phone.
 2. `/api/auth/device/code` requests `openid profile email offline_access`.
 3. The browser polls `/api/auth/device/token`; success sets both cookies on the
    server and returns only status. The old browser token-setting endpoint is removed.
