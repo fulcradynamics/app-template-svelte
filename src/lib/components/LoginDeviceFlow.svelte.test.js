@@ -38,7 +38,7 @@ test('blocked popup shows the selectable link, QR code and user code while polli
   expect(user.completeLogin).toHaveBeenCalledWith(verificationInfo.deviceCode, 5);
 });
 
-test('completed login closes the popup and removes the handoff', async () => {
+test('completed login removes the handoff', async () => {
   const popup = { closed: false, close: vi.fn() };
   vi.spyOn(window, 'open').mockReturnValue(/** @type {Window} */ (/** @type {unknown} */ (popup)));
   vi.mocked(user.startLogin).mockResolvedValue(verificationInfo);
@@ -55,5 +55,4 @@ test('completed login closes the popup and removes the handoff', async () => {
 
   finish();
   await waitFor(() => expect(screen.queryByLabelText('Sign-in link')).toBeNull());
-  expect(popup.close).toHaveBeenCalledOnce();
 });

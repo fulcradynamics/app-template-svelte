@@ -10,7 +10,7 @@ export async function POST() {
       body: JSON.stringify({
         client_id: env.PUBLIC_AUTH0_CLIENT_ID,
         audience: env.PUBLIC_FULCRA_API_ENDPOINT,
-        scope: 'openid profile email offline_access'
+        scope: 'openid profile email'
       }),
       signal: AbortSignal.timeout(10000)
     });
