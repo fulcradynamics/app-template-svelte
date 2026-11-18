@@ -1,6 +1,7 @@
 <script>
   import { user } from '$lib/user';
   import { appConfig } from '$lib/app-config.js';
+  import PoweredByFulcra from './PoweredByFulcra.svelte';
   import SignInHandoff from './SignInHandoff.svelte';
 
   let {
@@ -87,6 +88,7 @@
           >
         </div>
       {/if}
+      <PoweredByFulcra />
     </div>
     <div class="flex items-center gap-5 text-[13px]">
       <a

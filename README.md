@@ -90,6 +90,10 @@ Edit `src/lib/app-config.js` for login branding: `appName`, `tagline`,
 from `static/`). The existing placeholder appearance is the default.
 `LoginDeviceFlow` also accepts optional props with these names, defaulting to the config.
 
+The sign-in header and the signed-in footer show "Powered by Fulcra"
+(`PoweredByFulcra.svelte`); clicking it opens a drawer on building your own app
+with Fulcra. Keep it in both places.
+
 Build your feature UI in `src/routes/+page.svelte`. The root layout's `AuthGate`
 restores the server session before mounting feature children or showing login;
 cached localStorage user info alone never opens the gate. Keep initialization and
@@ -233,7 +237,8 @@ src/
 │   ├── api-client.js               # FulcraAPI class for calling the Fulcra API
 │   └── components/
 │       ├── AuthGate.svelte         # Session restoration and login boundary
-│       └── LoginDeviceFlow.svelte  # Login screen
+│       ├── LoginDeviceFlow.svelte  # Login screen
+│       └── PoweredByFulcra.svelte  # Fulcra branding and build-your-own-app drawer
 └── routes/
     ├── layout.css                  # Global styles with Fulcra colors
     ├── +layout.svelte              # Root layout

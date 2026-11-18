@@ -90,6 +90,7 @@ it.each([null, JSON.stringify({ auth0UserInfo: profile, fulcraUserInfo: {} })])(
     info.resolve(response({}));
     await screen.findByText('Private feature');
     expect(mounted).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('contentinfo').textContent).toMatch(/powered by/i);
   }
 );
 
@@ -164,6 +165,7 @@ it('keeps the default document title while logged out without mounting feature c
   await screen.findByRole('button', { name: 'Sign In' });
   expect(mounted).not.toHaveBeenCalled();
   expect(screen.queryByText('Private feature')).toBeNull();
+  expect(screen.queryByRole('contentinfo')).toBeNull();
   expect(document.title).toBe('Fulcra App Template');
 });
 

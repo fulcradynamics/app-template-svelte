@@ -1,9 +1,9 @@
 <script>
   import './layout.css';
-  import FulcraBranding from '$lib/components/FulcraBranding.svelte';
   import { blur } from 'svelte/transition';
   import { page } from '$app/state';
   import AuthGate from '$lib/components/AuthGate.svelte';
+  import PoweredByFulcra from '$lib/components/PoweredByFulcra.svelte';
 
   let { children } = $props();
 </script>
@@ -12,13 +12,16 @@
   <title>Fulcra App Template</title>
 </svelte:head>
 
-<FulcraBranding />
-
 <div class="flex h-full min-h-screen w-full flex-col p-3" in:blur>
   <AuthGate>
     {#key page.url.pathname}
       {@render children()}
     {/key}
+    <footer
+      class="sticky bottom-0 -mx-3 mt-auto -mb-3 flex justify-center bg-fulcra-black/70 py-2 backdrop-blur-sm"
+    >
+      <PoweredByFulcra />
+    </footer>
   </AuthGate>
 </div>
 
