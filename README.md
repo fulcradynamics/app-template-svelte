@@ -85,7 +85,7 @@ vercel deploy --prod         # production deploy
 
 ## Customization
 
-Edit `src/lib/app-config.js` for login branding: `appName`, `tagline`,
+Edit `src/lib/app-config.js` for login branding and link previews: `appName`, `tagline`,
 `description`, `showSlots`, and optional `logoSrc` (for example `/logo.svg`
 from `static/`). The existing placeholder appearance is the default.
 `LoginDeviceFlow` also accepts optional props with these names, defaulting to the config.
@@ -104,6 +104,15 @@ or server auth/API routes. Direct sign-out calls can remain in feature UI.
 The client gate controls rendering only; it does not authorize or prevent SvelteKit
 server loads. Server loads, API routes, and protected server-side fetches must still
 enforce authentication and authorization before returning protected data.
+
+### Link previews
+
+Links shared in messaging apps (iMessage, Slack, WhatsApp) preview as the app's
+logo and name, powered by Fulcra. The root layout emits Open Graph tags from
+`appName` and `tagline`, and `/og-image.png` is rendered at build time from
+`logoSrc` (SVG, PNG or JPEG in `static/`), or the Fulcra logo if there is none.
+Redeploy after changing them; apps may keep showing a cached preview for links
+already shared.
 
 ## Authentication
 

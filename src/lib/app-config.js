@@ -1,4 +1,4 @@
-// Customize the login screen here; feature UI lives in src/routes/+page.svelte.
+// Customize the login screen and link previews here; feature UI lives in src/routes/+page.svelte.
 /** @type {{ appName: string, tagline: string, description: string, showSlots: boolean, logoSrc?: string }} */
 export const appConfig = {
   appName: 'Your App Name',

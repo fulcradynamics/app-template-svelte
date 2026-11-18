@@ -167,6 +167,10 @@ it('keeps the default document title while logged out without mounting feature c
   expect(screen.queryByText('Private feature')).toBeNull();
   expect(screen.queryByRole('contentinfo')).toBeNull();
   expect(document.title).toBe('Fulcra App Template');
+  const meta = (/** @type {string} */ property) =>
+    document.head.querySelector(`meta[property="${property}"]`)?.getAttribute('content');
+  expect(meta('og:title')).toBe('Your App Name');
+  expect(meta('og:image')).toMatch(/^http:\/\/.+\/og-image\.png$/);
 });
 
 it('hides all template placeholders when slots are disabled without a logo', async () => {
