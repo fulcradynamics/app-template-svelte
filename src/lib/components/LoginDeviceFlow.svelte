@@ -97,12 +97,6 @@
         rel="noopener noreferrer"
         class="text-fulcra-gray hover:text-fulcra-white">Docs</a
       >
-      <a
-        href="https://support.fulcradynamics.com/en/"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="text-fulcra-gray hover:text-fulcra-white">Support</a
-      >
     </div>
   </header>
 
