@@ -1,20 +1,26 @@
 <script>
   import { user } from '$lib/user';
+  import { appConfig } from '$lib/app-config.js';
   import SignInHandoff from './SignInHandoff.svelte';
-  // import appLogo from '$lib/assets/your-logo.svg';
 
-  // ---- fill these in for your app ----
-  const appName = 'Your App Name';
-  const tagline = "One line on what your app does with a person's Fulcra data.";
-  const description =
-    'A starter template you can clone and build on. Sign-in and user accounts work from the first commit — replace this copy with your own and start shipping.';
-  const showSlots = true; // set false once you've replaced the placeholders
+  let {
+    appName = appConfig.appName,
+    tagline = appConfig.tagline,
+    description = appConfig.description,
+    showSlots = appConfig.showSlots,
+    logoSrc = appConfig.logoSrc
+  } = $props();
 
+  /** @type {Awaited<ReturnType<typeof user.startLogin>> | null} */
   let verificationInfo = $state(null);
   let polling = $state(false);
+  let starting = $state(false);
+  /** @type {string | null} */
   let error = $state(null);
 
   async function startLogin() {
+    if (starting || polling) return;
+    starting = true;
     // Open the popup synchronously within the click gesture. Safari only permits
     // window.open() in the same call stack as the user gesture; opening it after
     // an await gets blocked. We hand the window to user.startLogin(), which
@@ -29,6 +35,7 @@
     try {
       error = null;
       verificationInfo = await user.startLogin(popup);
+      starting = false;
 
       // Start polling for token
       polling = true;
@@ -47,7 +54,8 @@
       if (popup && !popup.closed) {
         popup.close();
       }
-      error = err.message;
+      starting = false;
+      error = err instanceof Error ? err.message : 'Unable to sign in';
       polling = false;
       verificationInfo = null;
     }
@@ -68,14 +76,17 @@
     class="sticky top-0 z-20 flex flex-none items-center justify-between gap-6 bg-fulcra-black/70 px-7 py-5 backdrop-blur-sm"
   >
     <div class="flex items-center gap-3">
-      <!-- replace this slot with <img src={appLogo} alt={appName} class="h-[30px]" /> -->
-      <div
-        class="grid h-[30px] min-w-[86px] place-items-center rounded-[7px] border border-dashed border-[#3d3d44] bg-[repeating-linear-gradient(135deg,#ffffff08_0_6px,transparent_6px_12px)] px-3"
-      >
-        <span class="font-mono text-[9.5px] tracking-[0.09em] text-fulcra-gray uppercase"
-          >your logo</span
+      {#if logoSrc}
+        <img src={logoSrc} alt={appName} class="h-[30px]" />
+      {:else if showSlots}
+        <div
+          class="grid h-[30px] min-w-[86px] place-items-center rounded-[7px] border border-dashed border-[#3d3d44] bg-[repeating-linear-gradient(135deg,#ffffff08_0_6px,transparent_6px_12px)] px-3"
         >
-      </div>
+          <span class="font-mono text-[9.5px] tracking-[0.09em] text-fulcra-gray uppercase"
+            >your logo</span
+          >
+        </div>
+      {/if}
     </div>
     <div class="flex items-center gap-5 text-[13px]">
       <a
@@ -118,10 +129,12 @@
           <div class="flex flex-col gap-2.5">
             <button
               class="btn h-12 w-full rounded-lg bg-fulcra-teal/20 text-[14.5px] font-medium text-fulcra-teal transition-colors hover:bg-fulcra-teal/50 hover:text-fulcra-black"
+              disabled={starting}
               on:click={startLogin}>Sign In</button
             >
             <button
               class="btn h-12 w-full rounded-lg border border-solid border-fulcra-black-25 bg-transparent text-[14.5px] font-normal text-fulcra-white transition-colors hover:border-fulcra-black-20 hover:bg-fulcra-black-50"
+              disabled={starting}
               on:click={startLogin}>Create Account</button
             >
           </div>

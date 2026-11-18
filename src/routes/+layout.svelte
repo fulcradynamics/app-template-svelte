@@ -3,17 +3,24 @@
   import FulcraBranding from '$lib/components/FulcraBranding.svelte';
   import { blur } from 'svelte/transition';
   import { page } from '$app/state';
+  import AuthGate from '$lib/components/AuthGate.svelte';
 
   let { children } = $props();
 </script>
 
+<svelte:head>
+  <title>Fulcra App Template</title>
+</svelte:head>
+
 <FulcraBranding />
 
-{#key page.url.pathname}
-  <div class="flex h-full min-h-screen w-full flex-col p-3" in:blur>
-    {@render children()}
-  </div>
-{/key}
+<div class="flex h-full min-h-screen w-full flex-col p-3" in:blur>
+  <AuthGate>
+    {#key page.url.pathname}
+      {@render children()}
+    {/key}
+  </AuthGate>
+</div>
 
 <style>
   :global(BODY) {

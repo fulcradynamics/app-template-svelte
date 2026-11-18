@@ -11,6 +11,7 @@ const verificationInfo = {
   verificationUri: 'https://example.auth0.com/activate?user_code=ABCD-EFGH',
   userCode: 'ABCD-EFGH',
   deviceCode: 'test-device-code',
+  expiresIn: 900,
   interval: 5
 };
 
