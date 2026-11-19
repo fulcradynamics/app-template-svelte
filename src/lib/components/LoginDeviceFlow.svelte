@@ -118,18 +118,11 @@
         </h2>
 
         {#if !verificationInfo}
-          <div class="flex flex-col gap-2.5">
-            <button
-              class="btn h-12 w-full rounded-lg bg-fulcra-teal/20 text-[14.5px] font-medium text-fulcra-teal transition-colors hover:bg-fulcra-teal/50 hover:text-fulcra-black"
-              disabled={starting}
-              on:click={startLogin}>Sign In</button
-            >
-            <button
-              class="btn h-12 w-full rounded-lg border border-solid border-fulcra-black-25 bg-transparent text-[14.5px] font-normal text-fulcra-white transition-colors hover:border-fulcra-black-20 hover:bg-fulcra-black-50"
-              disabled={starting}
-              on:click={startLogin}>Create Account</button
-            >
-          </div>
+          <button
+            class="btn h-12 w-full rounded-lg bg-fulcra-teal/20 text-[14.5px] font-medium text-fulcra-teal transition-colors hover:bg-fulcra-teal/50 hover:text-fulcra-black"
+            disabled={starting}
+            on:click={startLogin}>Sign in / Sign up</button
+          >
 
           {#if error}
             <p class="mt-3 text-[13px] text-fulcra-error">{error}</p>

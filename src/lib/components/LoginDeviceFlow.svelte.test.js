@@ -26,7 +26,7 @@ test('blocked popup shows the selectable link, QR code and user code while polli
   vi.mocked(user.startLogin).mockResolvedValue(verificationInfo);
   vi.mocked(user.completeLogin).mockReturnValue(new Promise(() => {}));
   render(LoginDeviceFlow);
-  await fireEvent.click(screen.getByRole('button', { name: 'Sign In' }));
+  await fireEvent.click(screen.getByRole('button', { name: 'Sign in / Sign up' }));
 
   const link = await screen.findByLabelText('Sign-in link');
   expect(screen.getByRole('heading', { name: 'Was the sign-in popup blocked?' })).toBeTruthy();
@@ -49,7 +49,7 @@ test('completed login removes the handoff', async () => {
     })
   );
   render(LoginDeviceFlow);
-  await fireEvent.click(screen.getByRole('button', { name: 'Create Account' }));
+  await fireEvent.click(screen.getByRole('button', { name: 'Sign in / Sign up' }));
   await screen.findByLabelText('Sign-in link');
   expect(user.startLogin).toHaveBeenCalledWith(popup);
 
