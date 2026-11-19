@@ -44,3 +44,10 @@ test('the Fulcra logo opens the build-an-app drawer with a copyable prompt', asy
     expect(screen.queryByRole('heading', { name: 'Go from idea to live app' })).toBeNull()
   );
 });
+
+test('the inline logo has no label and opens the same drawer', async () => {
+  render(PoweredByFulcra, { inline: true });
+  expect(screen.queryByText(/powered by/i)).toBeNull();
+  await fireEvent.click(screen.getByRole('button', { name: 'Fulcra' }));
+  expect(screen.getByRole('heading', { name: 'Go from idea to live app' })).toBeTruthy();
+});
