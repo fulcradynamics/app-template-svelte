@@ -121,7 +121,7 @@
           <button
             class="btn h-12 w-full rounded-lg bg-fulcra-teal/20 text-[14.5px] font-medium text-fulcra-teal transition-colors hover:bg-fulcra-teal/50 hover:text-fulcra-black"
             disabled={starting}
-            on:click={startLogin}>Sign in / Sign up</button
+            on:click={startLogin}>Sign In / Sign Up</button
           >
 
           {#if error}
@@ -129,7 +129,7 @@
           {/if}
 
           <p class="mt-4 text-[12px] leading-[1.6] text-pretty text-fulcra-gray">
-            Opens a secure Auth0 window. By continuing you agree to the
+            Opens a secure <PoweredByFulcra inline /> sign in window. By continuing you agree to the
             <a
               href="https://fulcra.ai/legal/terms-conditions"
               target="_blank"
@@ -162,7 +162,7 @@
       <div class="mt-5 flex items-center gap-2.5 pl-0.5">
         <span class="h-[5px] w-[5px] flex-none rounded-full bg-fulcra-teal"></span>
         <p class="text-[12.5px] text-fulcra-gray">
-          Sign-in handled by Auth0. Data access via the
+          Data access via the
           <a
             href="https://docs.fulcradynamics.com"
             class="text-fulcra-gray underline hover:text-fulcra-white">Fulcra API</a

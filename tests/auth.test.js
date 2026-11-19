@@ -75,7 +75,7 @@ it.each([null, JSON.stringify({ auth0UserInfo: profile, fulcraUserInfo: {} })])(
     render(Layout, { mounted });
     expect(screen.queryByText('Private feature')).toBeNull();
     expect(mounted).not.toHaveBeenCalled();
-    expect(screen.queryByRole('button', { name: 'Sign in / Sign up' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Sign In / Sign Up' })).toBeNull();
     await waitFor(() => expect(fetcher).toHaveBeenCalledWith('/api/auth/user'));
     check.resolve(response(profile));
     await waitFor(() =>
@@ -85,7 +85,7 @@ it.each([null, JSON.stringify({ auth0UserInfo: profile, fulcraUserInfo: {} })])(
       )
     );
     expect(mounted).not.toHaveBeenCalled();
-    expect(screen.queryByRole('button', { name: 'Sign in / Sign up' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Sign In / Sign Up' })).toBeNull();
     info.resolve(response({}));
     await screen.findByText('Private feature');
     expect(mounted).toHaveBeenCalledTimes(1);
@@ -111,7 +111,7 @@ it.each(['stale', 'malformed', 'invalid-shape', 'network', 'profile'])(
     const mounted = vi.fn();
     render(Layout, { mounted });
     if (['network', 'profile'].includes(kind)) await screen.findByRole('alert');
-    else await screen.findByRole('button', { name: 'Sign in / Sign up' });
+    else await screen.findByRole('button', { name: 'Sign In / Sign Up' });
     expect(mounted).not.toHaveBeenCalled();
     expect(localStorage.getItem('fulcraUserState')).toBeNull();
   }
@@ -161,7 +161,7 @@ it('keeps the default document title while logged out without mounting feature c
   const { default: Layout } = await import('./LayoutHarness.svelte');
   const mounted = vi.fn();
   render(Layout, { mounted });
-  await screen.findByRole('button', { name: 'Sign in / Sign up' });
+  await screen.findByRole('button', { name: 'Sign In / Sign Up' });
   expect(mounted).not.toHaveBeenCalled();
   expect(screen.queryByText('Private feature')).toBeNull();
   expect(screen.queryByRole('contentinfo')).toBeNull();
@@ -178,8 +178,8 @@ it('hides all template placeholders when slots are disabled without a logo', asy
   expect(screen.queryByText('your logo')).toBeNull();
   expect(screen.queryByText('app_name')).toBeNull();
   expect(screen.queryByText(/Template slots on this screen/)).toBeNull();
-  expect(screen.getByRole('img', { name: 'Fulcra' })).toBeTruthy();
-  expect(screen.getByRole('button', { name: 'Sign in / Sign up' })).toBeTruthy();
+  expect(screen.getAllByRole('img', { name: 'Fulcra' })).toHaveLength(2);
+  expect(screen.getByRole('button', { name: 'Sign In / Sign Up' })).toBeTruthy();
 });
 
 it('accepts custom branding and an optional logo without changing login', async () => {
@@ -197,7 +197,7 @@ it('accepts custom branding and an optional logo without changing login', async 
   expect(screen.getByRole('img', { name: 'Custom app' }).getAttribute('src')).toBe('/custom.svg');
   expect(screen.queryByText('app_name')).toBeNull();
   expect(screen.queryByText('your logo')).toBeNull();
-  expect(screen.getByRole('button', { name: 'Sign in / Sign up' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Sign In / Sign Up' })).toBeTruthy();
 });
 
 it('does not mount children after being unmounted during restoration', async () => {
@@ -219,7 +219,7 @@ it('does not mount children after being unmounted during restoration', async () 
   await waitFor(() => expect(get(user).init).toBe(true));
   expect(mounted).not.toHaveBeenCalled();
   expect(screen.queryByText('Private feature')).toBeNull();
-  expect(screen.queryByRole('button', { name: 'Sign in / Sign up' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Sign In / Sign Up' })).toBeNull();
 });
 
 it('shows polling failures in the real login UI without mounting feature children', async () => {
@@ -238,12 +238,12 @@ it('shows polling failures in the real login UI without mounting feature childre
   const { default: Layout } = await import('./LayoutHarness.svelte');
   const mounted = vi.fn();
   render(Layout, { mounted });
-  const button = await screen.findByRole('button', { name: 'Sign in / Sign up' });
+  const button = await screen.findByRole('button', { name: 'Sign In / Sign Up' });
   vi.useFakeTimers();
   button.click();
   await vi.advanceTimersByTimeAsync(1000);
   expect(screen.getByText('Denied')).toBeTruthy();
-  expect(screen.getByRole('button', { name: 'Sign in / Sign up' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Sign In / Sign Up' })).toBeTruthy();
   expect(mounted).not.toHaveBeenCalled();
 });
 
@@ -293,7 +293,7 @@ it.each([false, true])(
     const { default: Layout } = await import('./LayoutHarness.svelte');
     const { user } = await import('../src/lib/user.js');
     render(Layout, { mounted: vi.fn() });
-    const button = await screen.findByRole('button', { name: 'Sign in / Sign up' });
+    const button = await screen.findByRole('button', { name: 'Sign In / Sign Up' });
     vi.useFakeTimers();
     button.click();
     // These assertions run in the click's call stack, before yielding to any promise.
@@ -337,7 +337,7 @@ it.each([false, true])(
     await vi.advanceTimersByTimeAsync(1500);
     expect(localStorage.getItem('fulcraUserState')).toBeNull();
     expect(screen.queryByText('Private feature')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Sign in / Sign up' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Sign In / Sign Up' })).toBeTruthy();
     if (!blocked) expect(logoutPopup.close).toHaveBeenCalledOnce();
   }
 );
@@ -355,10 +355,10 @@ it('shows device-flow errors and closes the popup', async () => {
   vi.spyOn(window, 'open').mockReturnValue(/** @type {Window} */ (/** @type {unknown} */ (popup)));
   const { default: Login } = await import('../src/lib/components/LoginDeviceFlow.svelte');
   render(Login);
-  screen.getByRole('button', { name: 'Sign in / Sign up' }).click();
+  screen.getByRole('button', { name: 'Sign In / Sign Up' }).click();
   await screen.findByText('Failed to start device flow');
   expect(popup.close).toHaveBeenCalledOnce();
-  expect(screen.getByRole('button', { name: 'Sign in / Sign up' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Sign In / Sign Up' })).toBeTruthy();
 });
 
 it('polls pending and slow_down without receiving tokens', async () => {
@@ -516,7 +516,7 @@ it.each(['pending', 'logout'])(
     await logout;
     expect(screen.getByRole('alert').textContent).toMatch(/Unable to confirm sign-out/);
     expect(screen.getByRole('button', { name: 'Sign Out' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Sign in / Sign up' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Sign In / Sign Up' })).toBeNull();
     await expect(user.startLogin(null)).rejects.toThrow(/Sign-out/);
     await expect(user.request('/api/user/preferences')).rejects.toThrow(/Sign-out/);
     const expectedLogouts = kind === 'pending' ? 0 : 1;
@@ -533,6 +533,6 @@ it.each(['pending', 'logout'])(
     screen.getByRole('button', { name: 'Sign Out' }).click();
     await vi.advanceTimersByTimeAsync(0);
     expect(logouts).toBe(expectedLogouts + 1);
-    expect(screen.getByRole('button', { name: 'Sign in / Sign up' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Sign In / Sign Up' })).toBeTruthy();
   }
 );

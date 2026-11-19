@@ -9,6 +9,9 @@
   const guideUrl = 'https://docs.fulcradynamics.com/#for-agents';
   const prompt = `Install the build-and-deploy-a-web-app skill from ${skillUrl} and help me build an app.`;
 
+  // `inline`: just a small logo, to sit inside a sentence.
+  let { inline = false } = $props();
+
   /** @type {HTMLDialogElement} */
   let dialog;
   // Mounts the drawer so it slides in, and out before the dialog closes.
@@ -32,13 +35,17 @@
 
 <button
   type="button"
-  class="flex items-center gap-3 rounded-md opacity-90 transition-opacity hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-fulcra-teal"
+  class="{inline
+    ? 'inline-flex align-[-2px]'
+    : 'flex'} items-center gap-3 rounded-md opacity-90 transition-opacity hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-fulcra-teal"
   onclick={show}
 >
-  <span class="text-[11px] leading-none tracking-[0.06em] text-fulcra-gray uppercase"
-    >powered by</span
-  >
-  <img src={fulcraLogo} alt="Fulcra" class="block h-[22px] w-auto" />
+  {#if !inline}
+    <span class="text-[11px] leading-none tracking-[0.06em] text-fulcra-gray uppercase"
+      >powered by</span
+    >
+  {/if}
+  <img src={fulcraLogo} alt="Fulcra" class="block {inline ? 'h-[12px]' : 'h-[22px]'} w-auto" />
 </button>
 
 <dialog
