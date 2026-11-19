@@ -1,21 +1,27 @@
 <script>
   import { user } from '$lib/user';
-  import fulcraLogo from '$lib/assets/app-icon_152.png';
+  import { appConfig } from '$lib/app-config.js';
+  import PoweredByFulcra from './PoweredByFulcra.svelte';
   import SignInHandoff from './SignInHandoff.svelte';
-  // import appLogo from '$lib/assets/your-logo.svg';
 
-  // ---- fill these in for your app ----
-  const appName = 'Your App Name';
-  const tagline = "One line on what your app does with a person's Fulcra data.";
-  const description =
-    'A starter template you can clone and build on. Sign-in and user accounts work from the first commit — replace this copy with your own and start shipping.';
-  const showSlots = true; // set false once you've replaced the placeholders
+  let {
+    appName = appConfig.appName,
+    tagline = appConfig.tagline,
+    description = appConfig.description,
+    showSlots = appConfig.showSlots,
+    logoSrc = appConfig.logoSrc
+  } = $props();
 
+  /** @type {Awaited<ReturnType<typeof user.startLogin>> | null} */
   let verificationInfo = $state(null);
   let polling = $state(false);
+  let starting = $state(false);
+  /** @type {string | null} */
   let error = $state(null);
 
   async function startLogin() {
+    if (starting || polling) return;
+    starting = true;
     // Open the popup synchronously within the click gesture. Safari only permits
     // window.open() in the same call stack as the user gesture; opening it after
     // an await gets blocked. We hand the window to user.startLogin(), which
@@ -30,15 +36,12 @@
     try {
       error = null;
       verificationInfo = await user.startLogin(popup);
+      starting = false;
 
       // Start polling for token
       polling = true;
+      // On success, user.js signs the popup out of Auth0 and closes it.
       await user.completeLogin(verificationInfo.deviceCode, verificationInfo.interval);
-
-      // Close popup if still open
-      if (popup && !popup.closed) {
-        popup.close();
-      }
 
       // If we get here, login succeeded
       polling = false;
@@ -48,7 +51,8 @@
       if (popup && !popup.closed) {
         popup.close();
       }
-      error = err.message;
+      starting = false;
+      error = err instanceof Error ? err.message : 'Unable to sign in';
       polling = false;
       verificationInfo = null;
     }
@@ -69,21 +73,18 @@
     class="sticky top-0 z-20 flex flex-none items-center justify-between gap-6 bg-fulcra-black/70 px-7 py-5 backdrop-blur-sm"
   >
     <div class="flex items-center gap-3">
-      <!-- replace this slot with <img src={appLogo} alt={appName} class="h-[30px]" /> -->
-      <div
-        class="grid h-[30px] min-w-[86px] place-items-center rounded-[7px] border border-dashed border-[#3d3d44] bg-[repeating-linear-gradient(135deg,#ffffff08_0_6px,transparent_6px_12px)] px-3"
-      >
-        <span class="font-mono text-[9.5px] tracking-[0.09em] text-fulcra-gray uppercase"
-          >your logo</span
+      {#if logoSrc}
+        <img src={logoSrc} alt={appName} class="h-[30px]" />
+      {:else if showSlots}
+        <div
+          class="grid h-[30px] min-w-[86px] place-items-center rounded-[7px] border border-dashed border-[#3d3d44] bg-[repeating-linear-gradient(135deg,#ffffff08_0_6px,transparent_6px_12px)] px-3"
         >
-      </div>
-      <span class="text-[11px] leading-none tracking-[0.06em] text-fulcra-gray uppercase"
-        >powered by</span
-      >
-      <div class="flex items-center gap-2">
-        <img src={fulcraLogo} alt="Fulcra" class="block h-[26px] w-[26px] rounded-md" />
-        <span class="text-[13.5px] font-medium tracking-[0.01em]">Fulcra</span>
-      </div>
+          <span class="font-mono text-[9.5px] tracking-[0.09em] text-fulcra-gray uppercase"
+            >your logo</span
+          >
+        </div>
+      {/if}
+      <PoweredByFulcra />
     </div>
     <div class="flex items-center gap-5 text-[13px]">
       <a
@@ -91,12 +92,6 @@
         target="_blank"
         rel="noopener noreferrer"
         class="text-fulcra-gray hover:text-fulcra-white">Docs</a
-      >
-      <a
-        href="https://support.fulcradynamics.com/en/"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="text-fulcra-gray hover:text-fulcra-white">Support</a
       >
     </div>
   </header>
@@ -123,23 +118,18 @@
         </h2>
 
         {#if !verificationInfo}
-          <div class="flex flex-col gap-2.5">
-            <button
-              class="btn h-12 w-full rounded-lg bg-fulcra-teal/20 text-[14.5px] font-medium text-fulcra-teal transition-colors hover:bg-fulcra-teal/50 hover:text-fulcra-black"
-              on:click={startLogin}>Sign In</button
-            >
-            <button
-              class="btn h-12 w-full rounded-lg border border-solid border-fulcra-black-25 bg-transparent text-[14.5px] font-normal text-fulcra-white transition-colors hover:border-fulcra-black-20 hover:bg-fulcra-black-50"
-              on:click={startLogin}>Create Account</button
-            >
-          </div>
+          <button
+            class="btn h-12 w-full rounded-lg bg-fulcra-teal/20 text-[14.5px] font-medium text-fulcra-teal transition-colors hover:bg-fulcra-teal/50 hover:text-fulcra-black"
+            disabled={starting}
+            on:click={startLogin}>Sign In / Sign Up</button
+          >
 
           {#if error}
             <p class="mt-3 text-[13px] text-fulcra-error">{error}</p>
           {/if}
 
           <p class="mt-4 text-[12px] leading-[1.6] text-pretty text-fulcra-gray">
-            Opens a secure Auth0 window. By continuing you agree to the
+            Opens a secure <PoweredByFulcra inline /> sign in window. By continuing you agree to the
             <a
               href="https://fulcra.ai/legal/terms-conditions"
               target="_blank"
@@ -172,7 +162,7 @@
       <div class="mt-5 flex items-center gap-2.5 pl-0.5">
         <span class="h-[5px] w-[5px] flex-none rounded-full bg-fulcra-teal"></span>
         <p class="text-[12.5px] text-fulcra-gray">
-          Sign-in handled by Auth0. Data access via the
+          Data access via the
           <a
             href="https://docs.fulcradynamics.com"
             class="text-fulcra-gray underline hover:text-fulcra-white">Fulcra API</a

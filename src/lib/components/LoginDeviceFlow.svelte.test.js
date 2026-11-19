@@ -11,6 +11,7 @@ const verificationInfo = {
   verificationUri: 'https://example.auth0.com/activate?user_code=ABCD-EFGH',
   userCode: 'ABCD-EFGH',
   deviceCode: 'test-device-code',
+  expiresIn: 900,
   interval: 5
 };
 
@@ -25,7 +26,7 @@ test('blocked popup shows the selectable link, QR code and user code while polli
   vi.mocked(user.startLogin).mockResolvedValue(verificationInfo);
   vi.mocked(user.completeLogin).mockReturnValue(new Promise(() => {}));
   render(LoginDeviceFlow);
-  await fireEvent.click(screen.getByRole('button', { name: 'Sign In' }));
+  await fireEvent.click(screen.getByRole('button', { name: 'Sign In / Sign Up' }));
 
   const link = await screen.findByLabelText('Sign-in link');
   expect(screen.getByRole('heading', { name: 'Was the sign-in popup blocked?' })).toBeTruthy();
@@ -37,7 +38,7 @@ test('blocked popup shows the selectable link, QR code and user code while polli
   expect(user.completeLogin).toHaveBeenCalledWith(verificationInfo.deviceCode, 5);
 });
 
-test('completed login closes the popup and removes the handoff', async () => {
+test('completed login removes the handoff', async () => {
   const popup = { closed: false, close: vi.fn() };
   vi.spyOn(window, 'open').mockReturnValue(/** @type {Window} */ (/** @type {unknown} */ (popup)));
   vi.mocked(user.startLogin).mockResolvedValue(verificationInfo);
@@ -48,11 +49,10 @@ test('completed login closes the popup and removes the handoff', async () => {
     })
   );
   render(LoginDeviceFlow);
-  await fireEvent.click(screen.getByRole('button', { name: 'Create Account' }));
+  await fireEvent.click(screen.getByRole('button', { name: 'Sign In / Sign Up' }));
   await screen.findByLabelText('Sign-in link');
   expect(user.startLogin).toHaveBeenCalledWith(popup);
 
   finish();
   await waitFor(() => expect(screen.queryByLabelText('Sign-in link')).toBeNull());
-  expect(popup.close).toHaveBeenCalledOnce();
 });

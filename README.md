@@ -12,23 +12,29 @@ A SvelteKit web application template for building on the Fulcra platform. This t
 ## Getting Started
 
 1. Install dependencies:
+
 ```bash
 npm install
 ```
 
 2. Configure environment variables:
+
 ```bash
 cp .env.example .env
 ```
+
 Then edit `.env` with your Auth0 credentials and Fulcra API endpoint.
 
 3. Run the development server:
+
 ```bash
 npm run dev
 ```
+
 The app will be available at http://localhost:6173/
 
 4. Build for production:
+
 ```bash
 npm run build
 ```
@@ -43,7 +49,7 @@ This template uses `@sveltejs/adapter-auto`, which detects the host at build tim
 - `PUBLIC_AUTH0_CLIENT_ID`
 - `PUBLIC_FULCRA_API_ENDPOINT` (point this at a reachable API — not `localhost`)
 
-> No extra Auth0 setup is required for deployed environments: the device-flow login uses no callback URLs, and logout uses no `returnTo`, so nothing needs adding to Auth0's allowlists.
+> Device-flow login uses no callback URLs, and logout uses no `returnTo`. Auth0 must allow the device-code grant for this client; see Authentication below. Production requires HTTPS for Secure cookies. Configure the deployment's public origin correctly behind proxies so same-origin checks see the browser-facing origin.
 
 ### Local
 
@@ -77,31 +83,112 @@ vercel deploy                # preview deploy
 vercel deploy --prod         # production deploy
 ```
 
+## Customization
+
+Edit `src/lib/app-config.js` for login branding and link previews: `appName`, `tagline`,
+`description`, `showSlots`, and optional `logoSrc` (for example `/logo.svg`
+from `static/`). The existing placeholder appearance is the default.
+`LoginDeviceFlow` also accepts optional props with these names, defaulting to the config.
+
+The sign-in header and the signed-in footer show "Powered by Fulcra"
+(`PoweredByFulcra.svelte`); clicking it opens a drawer on building your own app
+with Fulcra. Keep it in both places.
+
+Build your feature UI in `src/routes/+page.svelte`. The root layout's `AuthGate`
+restores the server session before mounting feature children or showing login;
+cached localStorage user info alone never opens the gate. Keep initialization and
+login gating out of feature pages. Branding and feature customization should not
+require changes to auth components, the gate, `user.js`, `auth0-device-flow.js`,
+or server auth/API routes. Direct sign-out calls can remain in feature UI.
+
+The client gate controls rendering only; it does not authorize or prevent SvelteKit
+server loads. Server loads, API routes, and protected server-side fetches must still
+enforce authentication and authorization before returning protected data.
+
+### Link previews
+
+Links shared in messaging apps (iMessage, Slack, WhatsApp) preview as the app's
+logo and name, powered by Fulcra. The root layout emits Open Graph tags from
+`appName` and `tagline`, and `/og-image.png` is rendered at build time from
+`logoSrc` (SVG, PNG or JPEG in `static/`), or the Fulcra logo if there is none.
+Redeploy after changing them; apps may keep showing a cached preview for links
+already shared.
+
 ## Authentication
 
-This template includes Auth0 authentication out of the box, using the **Auth0 Device Authorization Flow** with server-side API proxying:
+This template uses the **Auth0 Device Authorization Flow**. The session is only the
+Fulcra access token, kept by the server in a host-only HTTP-only cookie; no token is
+returned in browser JSON. There is no refresh token, so people sign in again when the
+access token expires (24 hours).
 
-- **Device-flow login**: No callback URLs or Auth0 SPA SDK required; the flow is proxied through server routes to avoid CORS
-- **Access tokens**: Stored in HTTP-only cookies (more secure than localStorage)
-- **API calls**: Proxied through SvelteKit server routes, so calls to the Fulcra API are server-to-server
-- **Full logout**: Revokes the refresh token and clears the Auth0 SSO session, not just local state
-- **Portable**: No CORS issues and no domain allowlisting — works on any platform (Vercel, Netlify, Cloudflare Pages)
+### Session state and restoration
 
-### How login works
+`src/lib/user.js` exposes one reactive, in-memory store with `restoring`,
+`authenticated`, `signing-out`, `signed-out`, and `error` states. The root `AuthGate` and feature
+pages consume this same state. Initialization is deduplicated. Profiles are not
+persisted; the legacy `fulcraUserState` localStorage entry is removed best effort
+and never read. Storage being unavailable does not break authentication.
 
-1. User clicks **Sign In** → the app requests a device code from `/api/auth/device/code`
-2. A popup opens Auth0's verification page; the user confirms the displayed code
-3. The app polls `/api/auth/device/token` until Auth0 returns an access token
-4. The token is stored in an HTTP-only cookie via `/api/auth/token`
-5. Client requests hit `/api/*` server routes, which use the cookie to call the Fulcra API server-to-server
+Reloading validates the session through server-proxied Auth0 user info and loads
+Fulcra account info before revealing feature children. Cookie presence and cached
+profiles are not proof of authentication. A 401 signs out; network/provider failures
+show an error instead of pretending the session is absent. Feature requests should
+use `user.request()` so a 401 invalidates the shared state and logout waits for
+pending responses. The rendering gate is not authorization: every protected server
+route must use the shared server helper or otherwise independently authorize.
 
-While authorization is pending, the app shows the sign-in link (one click selects it), a QR code and the user code, so people in embedded browsers that block popups can finish signing in from their main browser or phone. The app keeps polling and signs in when they're done.
+### Login and server API access
 
-### How logout works
+1. The sign-in click opens a popup synchronously (including Safari). It visits
+   Auth0 logout briefly, then the verification page. While authorization is pending,
+   the app shows the sign-in link (one click selects it), a QR code and the user code,
+   so people in embedded browsers that block popups can finish in their main browser
+   or on a phone.
+2. `/api/auth/device/code` requests `openid profile email`.
+3. The browser polls `/api/auth/device/token`; success sets the access cookie on the
+   server and returns only status.
+4. Once signed in, the popup visits Auth0 logout again and closes, so Auth0 keeps no
+   session in that browser and the next person there must enter a password. The
+   app's own cookie is unaffected. Approving in another browser or on a phone leaves
+   that browser's Auth0 session alone.
+5. `/api/auth/user` validates against Auth0. `/api/user/info` POST loads the Fulcra
+   account and registers it if missing; GET only reads and never registers.
+6. Server routes call the Fulcra API through `src/lib/server/api.js` (`apiFor`), which
+   uses `authorizedFetch` from `src/lib/server/session.js`. A missing cookie or an
+   upstream 401 clears the cookie and returns 401; 403 and network errors keep it.
 
-**Sign Out** fully ends the session: it revokes the refresh token (`/api/auth/revoke`), clears the access-token cookie, wipes local state, and opens Auth0's `/v2/logout` to clear the SSO session so the next sign-in requires re-authentication.
+### Cookie policy and CSRF
 
-The auth logic lives in `src/lib/user.js` and `src/lib/auth0-device-flow.js`. This approach is more secure and doesn't require adding your domain to the Fulcra API CORS allowlist.
+The access cookie uses `HttpOnly`, `SameSite=Lax`, `Path=/`, no Domain, and `Secure`
+in production (disabled only in development for HTTP localhost/Safari). In production
+its name carries the `__Host-` prefix, so apps on sibling subdomains can't plant a
+cookie with the same name. It is a browser-session cookie (no `Max-Age`): it survives
+reloads, and quitting the browser ends it unless the browser restores sessions. The
+token inside expires after 24 hours either way. HTTP-only prevents JavaScript access,
+not theft through a compromised host/browser.
+
+`src/hooks.server.js` rejects every unsafe request with a missing or foreign
+Origin, including JSON device-code, token, registration, and logout routes, and
+rejects cross-site Fetch Metadata. Browser same-origin fetch supplies Origin on
+POST. Non-browser clients must supply the correct Origin too; this check is CSRF
+protection, not authentication. API responses are `Cache-Control: no-store`.
+Do not add mutations to GET handlers.
+
+### Logout
+
+Sign Out clears in-memory profiles immediately and opens the Auth0 logout popup
+synchronously, before any await; popup navigation is best effort. In-flight browser
+operations settle before `/api/auth/logout` clears the cookie, so a late Set-Cookie
+response cannot undo logout. The gate shows “Signing out” with no account data or
+login controls. Each wait is capped at 10 seconds; a timeout shows a warning and a
+retry Sign Out button, not success, and new login and feature requests stay blocked
+until a retry confirms sign-out. Closing the page without signing out leaves the app
+signed in in that browser until the token expires or the browser quits. Signing out does not revoke
+an already-issued access token at the API.
+
+Tests exercise mocked provider responses and browser UI/state transitions. Live
+Auth0 sign-in, deployed HTTPS cookies, and real Safari behavior require deployment
+testing with credentials.
 
 ## Fulcra API Client
 
@@ -109,7 +196,7 @@ The template includes a `FulcraAPI` class (`src/lib/api-client.js`) for organize
 
 - **High-level methods** for common operations: `getUserInfo()`, `getUserPreferences()`, etc.
 - **Low-level HTTP methods** for flexibility: `get()`, `post()`, `put()`, `delete()`
-- **Designed for extension** — add new methods following the existing pattern
+- **Designed for extension** — add new methods following the existing pattern; server routes obtain the client through `apiFor(cookies)` so they share authorization
 
 See the [Fulcra REST API documentation](https://docs.fulcradynamics.com/rest-api/) for available endpoints. When you need to call a new endpoint, add a method to `FulcraAPI` and use it from your server routes.
 
@@ -122,15 +209,18 @@ src/
 ├── lib/
 │   ├── auth0-device-flow.js        # Auth0 device authorization flow client
 │   ├── user.js                     # User/auth store (login, logout, session)
+│   ├── app-config.js               # Login branding customization
 │   ├── api-client.js               # FulcraAPI class for calling the Fulcra API
 │   └── components/
-│       └── LoginDeviceFlow.svelte  # Login screen
+│       ├── AuthGate.svelte         # Session restoration and login boundary
+│       ├── LoginDeviceFlow.svelte  # Login screen
+│       └── PoweredByFulcra.svelte  # Fulcra branding and build-your-own-app drawer
 └── routes/
     ├── layout.css                  # Global styles with Fulcra colors
     ├── +layout.svelte              # Root layout
     ├── +page.svelte                # Home page
     └── api/                        # Server routes (auth + API proxy)
-        ├── auth/                   # device/code, device/token, token, revoke
+        ├── auth/                   # device/code, device/token, user, logout
         └── user/                   # info, preferences
 ```
 
