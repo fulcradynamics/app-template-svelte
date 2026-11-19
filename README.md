@@ -39,6 +39,14 @@ The app will be available at http://localhost:6173/
 npm run build
 ```
 
+## Versioning
+
+`src/lib/template-version.js` holds the template version an app started from, and
+the root layout shows it in a `generator` meta tag. [CHANGELOG.md](CHANGELOG.md)
+lists breaking changes. When changing the template in a way existing apps would
+need to follow, bump `TEMPLATE_VERSION`, add a changelog entry saying what those
+apps must change, and tag the merge on `main` as `v<version>`.
+
 ## Deployment
 
 This template uses `@sveltejs/adapter-auto`, which detects the host at build time — no config change is needed for Vercel, Netlify, Cloudflare Pages, or Azure Static Web Apps.
@@ -210,6 +218,7 @@ src/
 │   ├── auth0-device-flow.js        # Auth0 device authorization flow client
 │   ├── user.js                     # User/auth store (login, logout, session)
 │   ├── app-config.js               # Login branding customization
+│   ├── template-version.js         # Template version this app started from
 │   ├── api-client.js               # FulcraAPI class for calling the Fulcra API
 │   └── components/
 │       ├── AuthGate.svelte         # Session restoration and login boundary

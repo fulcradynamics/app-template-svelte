@@ -5,12 +5,14 @@
   import AuthGate from '$lib/components/AuthGate.svelte';
   import PoweredByFulcra from '$lib/components/PoweredByFulcra.svelte';
   import { appConfig } from '$lib/app-config.js';
+  import { TEMPLATE_VERSION } from '$lib/template-version.js';
 
   let { children } = $props();
 </script>
 
 <svelte:head>
   <title>Fulcra App Template</title>
+  <meta name="generator" content="Fulcra app-template-svelte {TEMPLATE_VERSION}" />
   <meta name="description" content={appConfig.tagline} />
   <!-- Link previews in messaging apps -->
   <meta property="og:type" content="website" />

@@ -169,6 +169,9 @@ it('keeps the default document title while logged out without mounting feature c
   const meta = (/** @type {string} */ property) =>
     document.head.querySelector(`meta[property="${property}"]`)?.getAttribute('content');
   expect(meta('og:title')).toBe('Your App Name');
+  expect(document.head.querySelector('meta[name="generator"]')?.getAttribute('content')).toMatch(
+    /^Fulcra app-template-svelte \d+\.\d+\.\d+$/
+  );
   expect(meta('og:image')).toMatch(/^http:\/\/.+\/og-image\.png$/);
 });
 
